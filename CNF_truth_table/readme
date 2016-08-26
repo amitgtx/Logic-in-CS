@@ -2,10 +2,10 @@ pre_processing.py takes cnf clauses ass input and converts it into a numerical f
 
 Input format :
 
-no. of variables
-no. of cnf clauses
-clause 1
-clause 2
+No. of variables
+No. of cnf clauses
+Clause 1
+Clause 2
 ...
 ...
 
