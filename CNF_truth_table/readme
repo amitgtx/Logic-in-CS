@@ -1,4 +1,4 @@
-pre_processing.py takes cnf clauses ass input and converts it into a numerical form which can be accepted by cnf.c to form the truth table. 
+pre_processing.py takes cnf clauses as input and converts it into a numerical form which is then taken as input by cnf.c to form the truth table. 
 
 Input format :
 
