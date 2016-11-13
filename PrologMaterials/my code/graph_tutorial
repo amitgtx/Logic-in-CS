@@ -1,0 +1,19 @@
+Given a set of edge relations, define rules for the following :
+
+1.) Does there exist an edge b/w 2 nodes ? (First try to construct an undirected graph)
+2.) Given 2 distinct nodes, are the nodes mutually special ? (2 nodes are mutually special if they are at a distance of at most 2)
+3.) Does there exist a path b/w 2 nodes ?
+4.)	Is the graph complete ?
+5.) Is the graph connected ? (A graph is connected when there is a path between every pair of vertices)
+6.) Is the graph bipartite ? (a graph whose vertices can be divided into two disjoint sets U and V , such that every edge connects a vertex in U to one in V)
+
+
+7.) Is the graph Euler ? 
+8.) Is the graph Hamiltonian ?
+
+
+edge(X,Y):-r(X,Y);r(Y,X). %This will construct a directed graph using r
+special(X,Y):-edge(X,Y);edge(X,Z),edge(Z,Y).
+path(X,Y):-edge(X,Y);edge(X,Z),path(Z,Y).
+notconnected:-\+path(X,Y).
+connected:-\+notconnected. 

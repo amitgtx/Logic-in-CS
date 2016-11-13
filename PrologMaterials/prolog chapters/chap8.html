@@ -1,0 +1,1393 @@
+<html>
+<body>
+<hr>
+<h2>
+Representing uncertainty in rule-based systems
+</h2>
+
+<p>Numbers are important in most areas of engineering and science.
+In artificial intelligence, one use of numbers is to quantify the
+<em>degree</strong></em>
+to which we are certain about something, so we can rank our deductions.  This
+lets us model the world more realistically.  We'll show how these kinds of
+numbers can be easily added to rule-based systems in Prolog,
+and suggest ways--conservative, middle-of-the-road, and liberal--to
+manipulate them.
+
+<p>
+<h3>
+Probabilities in rules
+</h3>
+
+<p>Rules in rule-based systems have so far been absolute: when things
+are absolutely true on the right side of a rule, then the thing on
+the left side is absolutely true.  But in many real-world situations,
+inferences or even facts are to some degree uncertain or probabilistic.
+This is particularly true when facts in a rule-based system represent
+evidence, and rules represent hunches (hypotheses)
+explaining the evidence.  Examples are the diagnosis rules for a car-repair
+expert system; many diagnoses can't be certain unless the car is taken
+apart, but suggestive evidence can be found from the way the car behaves.
+
+<p>Mathematicians have for a long time used probabilities to model degrees
+of uncertainty in the world.  A probability is the fraction of the time
+we expect something will be true.  Other numbers are used in
+artificial intelligence to represent uncertainty, but probabilities
+came first, so we'll prefer them here.
+
+<p>As we mentioned in Section 2.10, we can add probabilities as an
+last argument to Prolog facts.
+So to say a battery in a randomly picked car is dead 3% of the time, we can
+put the fact
+<pre>
+battery(dead,0.03).
+</pre>
+in the Prolog database | REFERENCE 1|.
+.FS
+ | REFERENCE 1| Some Prolog implementations don't allow real (decimal)
+numbers.  If yours
+doesn't, you can represent probabilities by the integer closest to
+a million times the probability.  So 200,000 would represent a probability
+of 0.2.  You'll also have to modify the formulas given later in this chapter
+so the math will work right.  Use 1,000,000 wherever 1 occurs in formulas,
+and divide all products by 1,000,000, and multiply all two-number quotients
+by 1,000,000.  Addition and subtraction don't have to be modified.
+
+<p>Also, many Prolog implementations that do handle decimal numbers require
+digits both before and after the decimal point, so you have to say
+"0.03" instead of just ".03".  We'll do that in this book.
+.FE
+We can modify predicate expressions in rules similarly.  For instance,
+if 20% of the time when the car won't start it is true
+the battery is dead, we could write:
+<pre>
+battery(dead,0.2) :- ignition(wont_start,1.0).
+</pre>
+We can write different rules for inference of the same fact from different
+sources of evidence, each with its own probability.
+So if 50% of the time when the radio won't play the battery is dead:
+<pre>
+battery(dead,0.5) :- radio(wont_play,1.0).
+</pre>
+So if we want to reason about whether
+the battery is dead, we should gather all relevant rules and facts.
+Then somehow we must combine the probabilities from facts and successful
+rules to get a
+cumulative probability that the battery is dead.  This we call the
+<em>or-combination</strong></em> issue with probabilities, since you can think of rules
+with the same left-side predicate name as an implicit "or".
+
+<p>A second issue is that rules can be
+for a different reason than facts.
+Consider the preceding rule for the likelihood the battery is dead when
+the ignition won't start.  Suppose we are not sure the ignition
+won't start--we've tried it a few times, and the car didn't
+seem to respond.  (It might respond if we waited an hour
+to try it, which would be true if the engine is flooded.)  What now
+is our probability that the battery is dead?
+It must be less than 0.2, because the new conditions worsen the implication,
+but how much less?  It seems the 0.2 must be combined with the ignition-dead
+probability.  We will call this the <em>rule versus
+evidence probabilities</strong></em> issue.
+
+<p>A third issue is that rules can have "and"s of several
+predicate expressions on their right sides, and if each has a probability, we
+must somehow combine those numbers--what we call the <em>and-combination</strong></em> issue.
+Note this is quite different from the "or-combination",
+because weak evidence that any "and"ed expression is satisfied means
+weak evidence that the whole "and" is satisfied (a chain is as strong as its
+weakest link).
+
+<p>Probabilities often arise in artificial intelligence applications
+when reasoning backward. For instance, if the
+battery of a car is dead, the car will not start; and if there is a
+short in the electrical system of a car, the car will not start.  Those
+things are absolutely certain.  But if a car will not
+start, then we must reason backward to figure the likelihood that the
+battery is dead; we can't be completely certain because another cause
+like a short in the electrical system could also explain the failure to start.
+But reasoning backward from effects to
+causes has many important applications, so we must do it if we want
+computers to behave intelligently.
+
+<p>
+<h3>
+Some rules with probabilities
+</h3>
+
+<p>To show the flexibility of probabilities in rules, here are some examples.  Suppose
+6 times out of 10 when the car won't start, the battery is dead.  Then:
+<pre>
+battery(dead,0.6) :- ignition(wont_start,1.0).
+</pre>
+The 0.6 here is a <em>conditional probability</strong></em>, a
+probability something happens supposing something else happens.
+But we could also treat the right-side expression as something that couldn't
+possibly be uncertain, something that is either true or false.
+Then we could write the rule with a probability only on the left side:
+<pre>
+battery(dead,0.6) :- ignition(wont_start).
+</pre>
+
+<p>Now suppose the car won't start, and we measure the battery voltage
+with a voltmeter.  Suppose we're not skilled at using a voltmeter.  The
+following rule would apply:
+<pre>
+battery(dead,P) :- voltmeter(battery_terminals,abnormal,P).
+</pre>
+This says that the battery is dead with the same probability that the
+voltmeter measurement is outside the normal range.
+Not being skilled, we might not be measuring the voltage
+properly (the terminals might be reversed, or the range setting on the
+voltmeter might be too low or too high, causing us to incorrectly
+read no voltage).  So the uncertainty of the voltmeter measurement
+is reflected in the conclusion.  Note if
+<strong>P</strong></em> is 1 (if we are completely sure of our voltmeter measurement) then
+<strong>P</strong></em> is 1 for the battery being dead too.
+
+<p>Suppose we want to rewrite the preceding rule to ignore very weak evidence for
+the conclusion; this will help avoid unnecessary computation
+on insignificant things. We can put in an
+arithmetic comparison:
+<pre>
+battery(dead,P) :- voltmeter(battery_terminals,abnormal,P),
+  P &gt; 0.1.
+</pre>
+This says that if the voltmeter reading is outside the normal range
+with probability <strong>P</strong></em>, and <strong>P</strong></em> is more than 0.1, then the battery is dead
+with that same probability <strong>P</strong></em>.
+
+<p>Now consider what to do when the evidence on the right side of a rule
+can be certain or uncertain, but when it is certain it does not imply certainty
+of the left side.
+This can happen when the right side
+is a conclusion itself.  For instance:
+<pre>
+battery(dead,P) :- electrical_problem(P2), P is P2 * 0.5.
+</pre>
+This says that half the time when the car has an electrical problem,
+the battery is dead.  Mathematically, it takes the
+probability of an electrical problem and multiplies it by 0.5 to get
+the probability of the battery being dead.
+
+<p>Finally, here's an example of evidence combination.  If there is
+an electrical problem and battery is old, then we suspect (with maybe
+a probability of 0.9, because evidence is stronger than for the preceding rule)
+that the battery is dead.  But suppose we're
+not sure of either contributing factor, the problem
+being electrical or that the battery being old.   We must somehow
+decrease the 0.9 by the uncertainty of the factors.  One simple way
+(the probabilistic-independence-assumption method) is to take
+the product of 0.9 and the probabilities of the two factors,
+like this:
+<pre>
+battery(dead,P) :- electrical_problem(P2), age(battery,old,P3),
+   P is P2 * P3 * 0.9.
+</pre>
+So if we believe there's an electrical problem with probability 0.7,
+and we're 80% sure the battery is old, an estimate of the probability that the
+battery is dead is |0.7 * 0.8 * 0.9 = 0.504|.
+
+<p>All probabilities are estimates.
+We'll treat our probabilities as rough indications of certainty, mainly important
+relative to one another.  We won't insist that all our probabilities
+of a certain kind sum to 1, because rarely can we
+feel we've covered all possibilities.  For instance, a infinity of
+things can go wrong with your car, and it wouldn't be reasonable to
+compute the probability that your car won't start because mutant rats
+have eaten the engine.  (We won't even insist that probabilities
+of a certain kind must sum to no more than 1, because it's hard
+to analyze the amount of overlap among probabilities.)
+
+<p>
+<h3>
+Combining evidence assuming statistical independence
+</h3>
+
+<p>The last section shows that combining probabilities in rule-based systems
+is very important.  Surprisingly, there is no fully general mathematical
+approach to combining; the problem
+can be proved mathematically intractable.  But we can give some formulas
+that hold under particular assumptions, and most artificial-intelligence
+work follows this route.  Alas, people make frequent mistakes with
+probabilities, as shown by experiments, so it's a
+bad idea to look for guidance from the way people reason.
+
+<p>The easiest assumption we could make is that the different forms
+of evidence are probabilistically independent.  That is, occurrence
+of one kind of evidence does not make another kind
+any more or less likely.  This situation often happens when
+the evidence comes by very different reasoning methods, and can't
+"interact".  For instance, suppose we are writing an expert system
+to give advice about stock-market investments.  We might have two rules:
+<blockquote>
+1. If a quarterly report on economic indicators today says that interest
+rates will go up this year, then the stock market index will go down tomorrow with
+probability 0.7.
+
+<p>2. If the stock market index has gone up for three straight days, it will
+go down tomorrow with probability 0.4.
+</blockquote>
+These two rules reflect quite different phenomena.  So the success of
+the first rule won't make us believe the second is any more likely to succeed
+on the same day, and vice versa.  (Maybe there is a little bit of influence--a stock market
+going down a lot might indirectly cause interest rates to go up--but
+the connection is pretty weak.)  That's what we mean by statistical
+independence.
+
+<p>When statistical independence applies, probability theory says
+the probability of both of two uncertain events occurring is the product
+of the probabilities of each event occurring individually.  In general,
+if events |A, B, C, ...| are statistically independent, then in mathematical
+notation
+<pre>
+p   left [ A   "and"   B "and"   C   "and"   ... right ]
+= p ( A ) p ( B ) p ( C ) ...
+</pre>
+where |p ( A )| means "probability of event A", etc.
+This formula defines <em>and-combination</strong></em> of the probabilities of the events
+with the assumption of probabilistic independence.
+
+<p>As for "or"s (unions) of events instead of "and"s (intersections),
+consider the <em>Venn diagram</strong></em> in Figure 8-1.  Let regions represent events, so
+areas of regions represent probabilities,
+and the area of region A is |p(A)|.
+Then the area of the region representing the "or" of A and B
+is the area of A plus that area
+of B, minus the area in common between both A and B (we counted
+the area in common twice, hence we must subtract it out once).
+So since areas correspond to probabilities:
+<br>
+<pre>
+p ( A   "or"   B ) = p ( A ) + p ( B ) - p ( A   "and"   B)
+</pre>
+That last formula applies to
+<em>any</strong></em>
+events.  But when
+the independence assumption holds, we can think of the Venn diagrams
+as being drawn in a special way, so that events A and B correspond not
+to circles but to rectangular regions
+that cross at right angles.  See the top diagram in Figure 8-2.
+Here the area of the whole square (representing the <em>universe</strong></em> or all
+possible events) is 1,
+and the probabilities of A and B are each proportional to
+a distance along the side of the
+square.  So the area of the upper left subrectangle is the probability
+|p ( A   "and"   B )|, and the area of a rectangle is its length times its
+width, or is |p ( A ) p ( B )|.
+Hence substituting in the preceding equation, we get
+the formula for "or-combination" of two probabilities with the independence
+assumption:
+<br>
+<pre>
+p ( A   "or"   B ) = p ( A ) + p ( B ) - p ( A ) p ( B )
+</pre>
+We can generalize this to the "or" of three events:
+<br>
+<pre>
+p ( A   "or"   B   "or"   C ) = p ( A ) + p ( B) + p ( C ) - p ( A   "and"   B)
+- p ( A   "and"   C ) - p ( B   "and"   C ) + p ( A   "and"   B   "and"   C )
+</pre>
+<br>
+<pre>
+= p ( A ) + p ( B ) + p ( C ) - p ( A ) p ( B ) - p ( A ) p ( C )
+- p ( B ) p ( C ) + p ( A ) p ( B ) p ( C )
+</pre>
+<br>
+Using mathematics we can prove the general formula for the
+"or-combination" of a set of probabilities assuming probabilistic
+independence:
+<br>
+<pre>
+p   left [ A   "or"   B   "or"   C   "or"   ... right ] =
+1 - [ ( 1 - p ( A ) ) ( 1 - p ( B ) ) ( 1 - p ( C ) ) ... ]
+</pre>
+
+<p>
+<h3>
+Prolog implementation of independence-assumption "and-combination"
+</h3>
+
+<p>We can define a predicate that implements the preceding
+independence-assumption "and-combination" formula.  It will take two
+arguments: an input list of probabilities, and an output number for the
+combined probability.
+<pre>
+indep_andcombine([P],P).
+indep_andcombine([P|PL],Ptotal) :- indep_andcombine(PL,P2), Ptotal is P2 * P.
+</pre>
+We just call this predicate as the last thing on the right side of rules,
+to combine the "and"ed probabilities in a rule.  If we
+had a rule without probabilities like this:
+<pre>
+f :- a, b, c.
+</pre>
+we would turn it into a rule with probabilities like this:
+<pre>
+f(P) :- a(P1), b(P2), c(P3), indep_andcombine([P1,P2,P3],P).
+</pre>
+
+<p>That addresses the third issue discussed in Section 8.1.
+Interestingly, <strong>indep_andcombine</strong></em> can also address the second
+issue discussed in Section 8.1, that of modeling rule strengths.  Suppose
+we have a rule:
+<pre>
+g(P) :- d(P1), e(P2), indep_andcombine([P1,P2],P).
+</pre>
+The <strong>indep_andcombine</strong></em> handles uncertainty of <strong>d</strong></em> and <strong>e</strong></em>,
+but the rule itself may be uncertain, meaning that the conclusion
+<strong>g</strong></em> has a probability less than 1 even when P1 and P2 are both 1.
+We could characterize this rule uncertainty itself with a
+probability, the probability that the rule succeeds given complete certainty of
+all terms "and"ed on its right
+side.  If this probability were 0.7 for instance, we could rewrite it:
+<pre>
+g(P) :- d(P1), e(P2), indep_andcombine([P1,P2,0.7],P).
+</pre>
+In other words, rule uncertainty can be thought of as a "hidden"
+"and"ed predicate expression) with an associated probability.
+
+<p>Here's an example.  Suppose we have the following rule and facts:
+<pre>
+f(P) :- a(P1), b, c(P2), indep_andcombine([P1,P2,0.8],P).
+a(0.7).
+b.
+c(0.95).
+</pre>
+Then for the query
+<pre>
+?- f(X).
+</pre>
+<strong>P1</strong></em> will be bound to 0.7, and <strong>P2</strong></em> to 0.95.  Predicate
+<strong>indep_andcombine</strong></em> computes |0.7 * 0.95 * 0.8 = 0.537|, and <strong>P</strong></em> is bound to that;
+so that's <strong>X</strong></em>, the total probability of predicate <strong>f</strong></em>.
+
+<p>For rules that refer only to things absolutely true and false, "and-combination" is
+unnecessary.  The rule-strength probability need only be on the left side,
+as for instance:
+<pre>
+f(0.7) :- a, b, c.
+</pre>
+
+<p>
+<h3>
+Prolog implementation of independence-assumption "or-combination"
+</h3>
+
+<p>The remaining issue discussed in Section 8.1 was "or-combination"
+of probabilities.  Independence-assumption "or-combination" can be
+defined analogously to independence-assumption "and-combination" but
+using the last formula in Section 8.3:
+<pre>
+indep_orcombine([P],P).
+indep_orcombine([P|PL],Ptotal) :- indep_orcombine(PL,P2),
+ Ptotal is 1 - ( (1-P) * (1-P2) ).
+</pre>
+"Or-combination" is needed when we have multiple evidence
+for the truth of predicate <strong>f</strong></em>, as for instance:
+<pre>
+f(0.5) :- a.
+f(0.7) :- b, c.
+f(0.8) :- d, not(e).
+</pre>
+"Or-combination" is more awkward than "and-combination" because we must
+use a new predicate name to represent the combination | REFERENCE 2|.
+So for the preceding
+example we must define something like <strong>f_overall</strong></em> that represents the
+cumulative likelihood of <strong>f</strong></em>.  This can use a special built-in
+predicate called <strong>bagof</strong></em>, used this way:
+<pre>
+f_overall(P) :- bagof(P2,f(P2),PL), indep_orcombine(PL,P).
+</pre>
+We'll explain this <strong>bagof</strong></em> predicate more formally in Section 10.6.
+For now we'll note that <strong>bagof</strong></em> has three arguments: a variable (an input),
+a predicate expression containing that variable (an input), and a list
+of all values to which the variable in the expression can successfully
+be bound (an output).  So the <strong>bagof</strong></em> says to make a list
+PL of all the P2 such that <strong>f(P2)</strong></em> succeeds.  If the argument to <strong>f</strong></em>
+represents the probability of event <strong>f</strong></em>, the list PL will contain all the
+probabilities found for the predicate <strong>f</strong></em> by every possible rules and
+fact.  These can be combined with the <strong>indep_orcombine</strong></em> | REFERENCE 2|.
+.FS
+ | REFERENCE 2| An alternative simpler implementation of indep_orcombine
+is possible in many dialects of Prolog with the "univ" feature (see Section
+7.14) that converts from
+lists to predicate expressions, symbolized by "<strong>=..</strong></em>", where the left side is
+an expression and the right side is its component list of symbols.
+It's used like this:
+<strong>new_indep_orcombine(F,P) :- Pred =.. [F,P2], bagof(P2,Pred,PL), indep_orcombine(PL,P).</strong></em>
+.FE
+
+<p>As an example, suppose we have these rules and facts:
+<pre>
+g(0.7) :- a.
+g(P) :- b(P1), c(P2), indep_andcombine([P1,P2,0.9],P).
+g(0.3) :- a, d.
+a.
+b(0.8).
+c(0.9).
+d.
+</pre>
+Then to combine evidence for the <strong>g</strong></em> predicate we need:
+<pre>
+total_g(P) :- bagof(P2,g(P2),PL), indep_orcombine(PL,P).
+</pre>
+and to use it we must query:
+<pre>
+?- total_g(X).
+</pre>
+All three <strong>g</strong></em> rules will succeed with these facts, and <strong>P</strong></em> in the second <strong>g</strong></em> rule
+will be bound to |0.8 * 0.9 * 0.9 = 0.648|.  So <strong>PL</strong></em> in the <strong>total_g</strong></em>
+rule will be bound to <strong>[0.7,0.648,0.3]</strong></em>.  Now we must call on <strong>indep_orcombine</strong></em>.
+|1 - (( 1 - 0.648 ) * ( 1 - 0.3 ) ) = 1 - 0.352 * 0.7 = 0.7536|, and
+|1 - (( 1 - 0.7 ) * ( 1 - 0.7536 ) ) = 1 - 0.3 * 0.2464 = 0.92608|.
+Hence the argument <strong>P</strong></em> to <strong>total_g</strong></em> will be bound to 0.92608, and hence
+to <strong>X</strong></em>, the total probability that <strong>g</strong></em> is true.
+
+<p>
+<h3>
+The conservative approach
+</h3>
+
+<p>Independence when combining probabilities is a strong assumption.
+It does not hold when one event causes another, or when two events are both
+caused by some other event.  For instance with a small
+appliance, a totally nonfunctioning device suggests an
+electrical problem, and a frayed cord suggests an electrical problem.
+This could be represented as:
+<pre>
+electrical_problem(0.5) :- doesnt_work.
+electrical_problem(0.6) :- frayed_cord.
+</pre>
+If both rules succeed, the independence-assumption probability of an
+electrical problem is 0.8.  But that's too high, because the cord
+problem could explain the not-working observation: the cord being frayed
+could cause the device not to work.  So the true combined probability
+should be closer to 0.6, the number in the second rule.
+
+<p>One approach when independence does not hold is to be very conservative,
+very careful not to overestimate the cumulative probability.
+This <em>conservative</strong></em> approach is sometimes called a <em>fuzzy
+set</strong></em> approach, actually it is more general than what is called
+"fuzzy set theory", representing a mathematically provable lower bound.
+Consider a "conservative orcombine".  Whatever the total probability
+for some event with multiple positive evidence, it must be no worse
+than the probability of the strongest evidence: positive evidence shouldn't
+ever disconfirm other positive evidence.  So we could define a "conservative
+orcombine" to operate on probability lists in place of <strong>indep_orcombine</strong></em>,
+to use whenever independence clearly doesn't hold between the probabilities:
+<pre>
+con_orcombine(PL,P) :- max(PL,P).
+max([P],P).
+max([P|PL],P) :- max(PL,P2), P &gt; P2.
+max([P|PL],P2) :- max(PL,P2), not(P &gt; P2).
+</pre>
+The <strong>max</strong></em> definition is from Section 5.5.  The middle diagram of
+Figure 8-2 is the Venn diagram for the "conservative-or" case.
+
+<p>For a corresponding "conservative andcombine", we could just give
+"0"--that's always plenty conservative.  But if the "and"ed
+probabilities are all large, we can prove a nonzero value.  Consider the two
+probabilities 0.7 and 0.8 for two events.  30% of the time the first event
+must be false.  That 80%
+for the second event can't all "fit" into 30%; only part of it can, with another
+50% left over.  So at least 50% of the time both events must occur;
+i.e., the minimum probability is 0.5.
+
+<p>In general, the conservative value for |p ( A   "and"   B ) | is
+<pre>
+maxfunction ( p ( A ) + p ( B ) - 1 , 0 )
+</pre>
+where "maxfunction" is a mathematical function having a value
+(not a predicate like the previous <strong>max</strong></em>), and its
+value is the larger of its two arguments.  We will define:
+<blockquote>
+<em>The value of maxfunction(X,Y) is the larger of the two numbers X and Y;</strong></em>
+<br>
+The value of minfunction(X,Y) is the smaller of the two numbers X and Y.
+</blockquote>
+To generalize the "and" formula to any number of
+"and"ed expressions, we can define:
+<pre>
+con_andcombine([P],P).
+con_andcombine([P|PL],0) :- con_andcombine(PL,P2), P + P2 &lt; 1.0.
+con_andcombine([P|PL],Ptotal) :- con_andcombine(PL,P2),
+  P3 is P+P2, not(P3&lt;1.0), Ptotal is P + P2 - 1.0.
+</pre>
+
+<p>The bottom diagram in Figure 8-2 is the Venn diagram for the
+<strong>conservative_and</strong></em> case.  So the diagram
+for conservative "or" is different from the diagram
+for conservative "and".  In general, you should use the conservative
+"or" when there are strong positive correlations between evidence, and the
+conservative "and" when there are strong negative correlations.
+
+<p>To illustrate, let's use the same example of the last section but
+substitute in <strong>con_orcombine</strong></em> and <strong>con_andcombine</strong></em>:
+<pre>
+total_g(P) :- bagof(P2,g(P2),PL), con_orcombine(PL,P).
+g(0.7) :- a.
+g(P) :- b(P1), c(P2), con_andcombine([P1,P2,0.9],P).
+g(0.3) :- a, d.
+a.
+b(0.8).
+c(0.9).
+d.
+</pre>
+The second <strong>g</strong></em> rule binds its <strong>P</strong></em> to |0.8 + ( 0.9 + 0.9 - 1 ) - 1 = 0.6|.  Then
+PL is bound to <strong>[0.7,0.6,0.3]</strong></em>, and <strong>P</strong></em> in <strong>total_g</strong></em> is bound to 0.7.
+
+<p>Note we don't have to pick the independence-assumption or conservative
+approach exclusively in a rule-based system.  We can choose one in each
+situation based on our analysis of appropriateness.
+
+<p>The conservative "or-combination" is particularly useful
+for handling prior (or <em>a priori</strong></em>) probabilities.  These are "starting"
+probabilities for the likelihood of an event on general grounds.  They
+are usually numbers close to 0, and they can be expressed in the
+Prolog database as
+<em>facts</strong></em>
+(instead of rules) with probabilities.  For instance, checking under the
+hood of a car for frayed wires is a lot of work, so an expert system for
+auto diagnosis might first try to diagnose an electrical problem without asking
+for such an inspection, using an "a priori" probability of 0.01 of any wire
+being frayed.  The independence assumption is a poor idea for combining a priori
+probabilities because they represent a summary of many sources of evidence.
+
+<p>
+<h3>
+The liberal approach and others
+</h3>
+
+<p>There's also a <em>liberal</strong></em> approach: compute the maximum probability
+consistent with the evidence.  This isn't as useful as the "conservative"
+approach, but applies for "and"s whenever one piece of evidence implies all
+the others, and applies for "or"s whenever pieces of evidence are disjoint
+(i.e., prove the same conclusion is ways that cannot hold simultaneously).
+Liberal formulas can be derived from the conservative formulas by relating
+"and" and "or", as with the formula for two variables:
+<pre>
+p ( A   "or"   B ) = p ( A ) + p ( B ) - p ( A   "and"   B)
+</pre>
+which can also be written
+<pre>
+p ( A   "and"   B ) = p ( A ) + p ( B ) - p ( A   "or"   B)
+</pre>
+Since |p ( A )| and |p ( B )| are known, the maximum value of the
+first formula occurs when |p ( A   "and"   B)| has a minimum, and
+the maximum of the second formula occurs when |p ( A   "or"   B)| has
+a minimum (note the important minus signs).  These needed minima are given
+the conservative formulas.  So the liberal bound on two-argument "or"s is
+<pre>
+p ( A ) + p ( B ) - maxfunction ( p ( A ) + p ( B ) - 1 , 0 )
+</pre>
+<pre>
+= - maxfunction ( -1 , - p ( A ) - p ( B ) ) = minfunction ( 1 , p ( A ) + p ( B ) )
+</pre>
+and the liberal bound on "and"s is
+<pre>
+p ( A ) + p ( B ) - maxfunction ( p ( A ) , p ( B ) )
+</pre>
+<pre>
+= - maxfunction ( - p ( B ) , - p ( A ) ) = minfunction ( p ( A ) , p ( B ) )
+</pre>
+
+<p>To generalize, the liberal approach for "and-combination"
+is the minimum of the probabilities:
+<pre>
+lib_andcombine(PL,P) :- min(PL,P).
+min([X],X).
+min([X|L],X) :- min(L,X2), X &lt; X2.
+min([X|L],X2) :- min(L,X2), not(X &lt; X2).
+</pre>
+(The <strong>min</strong></em> is just like the <strong>max</strong></em> of Sections 5.5 and 8.6.)
+Similarly, the general "or-combination" is the sum of the
+probabilities, provided this number is not greater than 1:
+<pre>
+lib_orcombine(PL,1.0) :- sumup(PL,P), P &gt; 1.0.
+lib_orcombine(PL,P) :- sumup(PL,P), not(P &gt; 1.0).
+sumup([P],P).
+sumup([P|PL],Ptotal) :- sumup(PL,P2), Ptotal is P + P2.
+</pre>
+
+<p>The middle diagram in Figure 8-2 shows the liberal "and" case
+graphically, and the bottom diagram in Figure 8-2
+illustrates the liberal "or".  That is, they're the
+situations for the conservative "and" and "or" reversed.
+In general, you should use the liberal "and" when there are strong positive
+correlations between evidence, and the
+liberal "or" when there are strong negative correlations--just the
+opposite of the advice for the conservative formulas.
+
+<p>Consider the same example we have used before, but with <strong>lib_orcombine</strong></em>
+and <strong>lib_andcombine</strong></em>:
+<pre>
+total_g(P) :- bagof(P2,g(P2),PL), lib_orcombine(PL,P).
+g(0.7) :- a.
+g(P) :- b(P1), c(P2), lib_andcombine([P1,P2,0.9],P).
+g(0.3) :- a, d.
+a.
+b(0.8).
+c(0.9).
+d.
+</pre>
+Now <strong>P</strong></em> in the second <strong>g</strong></em> rule will be bound to
+0.8, the minimum of <strong>[0.8,0.9,0.9]</strong></em>.
+Then <strong>PL</strong></em> is bound to <strong>[0.7,0.8,0.3]</strong></em>, and <strong>P</strong></em> in <strong>total_g</strong></em> is bound to 1.0.
+
+<p>Again, we can use the liberal approach wherever we like in a rule-based
+system, and the conservative and independence-assumption approaches
+elsewhere in the same system too.  The formulas are summarized in Figure
+8-3.  (All the formulas are associative, so we can get the n-item
+formula from the two-item formula.)
+If we aren't sure any is best, we can take a weighted average.
+Or we could invent our own formula.  But we must be careful, because
+not all formulas make sense.  Reasonable criteria
+are (1) smoothness, that the formula never makes abrupt jumps in value as input
+probabilities smoothly vary; (2) consistency, that it never gives values
+outside the range between the conservative and liberal values;
+(3) commutativity,
+that the order of binary combination doesn't matter; and (4) associativity,
+that the formula gives the same result no matter how
+the expressions are grouped (for example, combining |p sub 1| with the
+combination of |p sub 2| and |p sub 3| must be the same as combining
+the combination of |p sub 1| and |p sub 2| with |p sub 3|).
+
+<p>
+<h3>
+Negation and probabilities
+</h3>
+
+<p>Conditions in rules that something
+<em>not</strong></em>
+be true cause problems for probabilities.  For instance:
+<pre>
+a :- b, not(c).
+</pre>
+If a, b, and c are all uncertain and the rule itself has a
+certainty of 0.7, it won't do to just add extra arguments like this:
+<pre>
+a(P) :- b(P1), not(c(P2)), indep_andcombine([P1,P2,0.7],P).
+</pre>
+because if there's any evidence for c, no matter how weak,
+the rule will fail.  We want instead for weak evidence for c to
+<em>decrease</strong></em>
+the probability of a in a small way.  The way to handle this is to note
+the probability of something being false is one minus the probability
+of it being true.  So instead:
+<pre>
+a(P) :- b(P1), c(P2), inverse(P2,NegP2), indep_andcombine([P1,NegP2,0.7],P).
+</pre>
+where <strong>inverse</strong></em> is defined as:
+<pre>
+inverse(X,IX) :- IX is 1 - X.
+</pre>
+So we shouldn't use <strong>not</strong></em>s when probabilities are involved,
+but use this predicate <strong>inverse</strong></em> on the resulting probabilities.
+(But you must still be careful to remember that <strong>p(0.0)</strong></em> won't match
+<strong>not(p)</strong></em>.)
+
+<p>Some artificial-intelligence systems don't follow this approach, however.
+They try to be more general by reasoning separately about
+events and their negations.  They collect evidence for an event,
+and combine it with probability combination rules, but they also collect
+evidence against an event and combine it separately.
+Then they combine these two cumulative probabilities
+somehow to get an overall likelihood measure.  A simple way used in many
+expert systems is to take the difference of the probability for something
+and the probability against something.
+This number ranges from 1.0 (complete certainty of truth) through
+0.0 (complete indecision) to -1.0 (complete certainty of falsity).
+
+<p>
+<h3>
+An example: fixing televisions
+</h3>
+
+<p>Now we'll give an example of a simple rule-based expert system using
+probabilities, for diagnosis of malfunctioning equipment.  Unfortunately,
+most expert systems (like most artificial intelligence programs)
+must be big to do anything worthwhile; otherwise, human beings could
+do the job fine without them.  So to avoid burdening you with an example ten
+pages long, we must pick something simple and not very useful.
+So here's an example of the few things wrong with a television
+set that you can fix yourself (television sets use high voltages so most
+malfunctions should be treated by trained service personnel.)
+
+<p>When a television set is working improperly, one of two things
+may be improperly adjusted: the controls (knobs and switches) or
+the receiver (antenna or cable).  So let's
+write an expert system to estimate probabilities of those two things.
+We'll assume these probabilities need not be very accurate, but their
+relative sizes provide a rough guide to where things are wrong.
+
+<p>Consider why the knobs might be adjusted wrong on a television.  If
+it is old and requires frequent adjustment, that could be a reason.
+Similarly, if kids use your set, and they play with the knobs, that could
+be a reason too, as well as anything strange you've done
+lately that required adjustment of the knobs (like taking a
+photograph of the television picture, requiring that the brightness be turned
+up very high).  Let's write the rules.  If a set requires frequent readjusting,
+then it's quite reasonable that the set is
+maladjusted today--let's say 50% sure:
+<pre>
+maladjusted(0.5) :- askif(frequent_adjustments_needed).
+</pre>
+(The <strong>askif</strong></em> predicate was defined in Section 7.3; it types
+out a question for the user, and checks if the response
+is positive or negative.)
+For recent unusual usage of the television,
+it matters how you define "unusual".
+But let's say 50% to be reasonable, so the rule is:
+<pre>
+maladjusted(0.5) :- askif(recent_unusual_usage).
+</pre>
+The rule for children must
+insist both that children hang around
+your house and that they would be inclined to mess around with the knobs on your
+television.  That's the "and" of two conditions, so we need an "andcombine".
+When both conditions hold, it's quite likely the set is maladjusted, so we
+can give this rule a rule strength of 0.9.  So the rule is:
+<pre>
+maladjusted(P) :- askif(children_present(P1)),
+  askif(children_twiddle_knobs(P2)), andcombine([P1,P2,0.9],P).
+</pre>
+
+<p>Then to get the cumulative probability the set was recently adjusted, we need an
+orcombine:
+<pre>
+recently_adjusted(P) :- bagof(P2,maladjusted(P2),PL), orcombine(PL,P).
+</pre>
+
+<p>This last predicate
+just summarizes predisposing evidence for a set
+maladjustment, but it doesn't incorporate the best evidence at
+all, observations of the television set.
+In other words, two major factors, past and present, must be combined.
+This could be either an "andcombine" or an "orcombine", but "andcombine" seems
+preferable because neither factor here implies strongly the
+diagnosis; it's only when both occur together that
+evidence is strong.  That suggests:
+<pre>
+diagnosis('knobs on set require adjustment',P) :-
+  recently_adjusted(P2), askif(operation(abnormal)),
+  andcombine([P2,0.8],P).
+</pre>
+(Remember, single quotation marks (') indicate character strings
+in Prolog; everything between two single quotation marks, including spaces,
+is treated as a unit.)
+
+<p>If there is some uncertainty about whether the television's
+behavior is normal, we
+could include a probability as a second argument to the <strong>operation</strong></em> predicate,
+combining it in the "andcombine" too.  Or we could characterize
+the operation by many different words.  For instance:
+<pre>
+diagnosis('knobs on set require adjustment',P) :-
+  recently_adjusted(P2), askif(operation(mediocre)),
+  andcombine([P2,0.5],P).
+</pre>
+
+<p>So we have a three-level expert system: an "and" of two expressions, one of which
+is an "or" of three expressions, one of which in turn is an "and" of two expressions.
+It's true we could simplify this into two levels by the laws of logic (see
+Appendix A),
+rewriting everything in disjunctive normal form or conjunctive normal form
+(see Appendix A), but this
+isn't a good idea with rule-based systems.
+For one thing, extra levels let you group related concepts
+together to make the rule-based system easier to understand; in a normal
+form, widely different predicates can be thrown together.
+Grouping related terms together also enables easier determination of
+probability values and easier choice of probability combination methods;
+it's difficult to pick a good combination method for twenty terms, since some
+of the "and"ed expressions must be
+considerably more related than others.  Many-level rule-based systems
+also allow easier design and debugging, because they give lots
+of places to put checkpoints and tracing facilities.
+
+<p>Now let's turn to the other kind of television diagnosis we can
+make, that the antenna or cable connection to the television set is faulty.
+For this conclusion we will use the same <strong>diagnosis</strong></em>, and
+<strong>operation</strong></em> predicates as before.
+But we'll need a new predicate to summarize contributing factors to the
+faultiness of the antenna or cable connection, <strong>overall_source_problems</strong></em>:
+<pre>
+source_problems(0.8) :- askif(television(new)).
+source_problems(0.95) :- askif(antenna(new)).
+source_problems(0.95) :- askif(cable(new)).
+source_problems(0.3) :- askif(recent_furniture_rearrangement).
+overall_source_problems(P) :- bagof(P2,source_problems(P2),PL),
+  orcombine(PL,P).
+</pre>
+Let's assume that no one has both an
+antenna and a cable connection (or if they do, only one of
+them is operating).  We'll use a <strong>source_type</strong></em> predicate
+to indicate whether the set up is an antenna or a cable.  Then we have two
+rules for the two diagnoses:
+<pre>
+diagnosis('antenna connection is faulty',P) :-
+  askif(source_type(antenna)), askif(operation(abnormal)),
+  overall_source_problems(P).
+diagnosis('cable connection is faulty',P) :-
+  askif(source_type(cable)), askif(operation(abnormal)),
+  overall_source_problems(P).
+</pre>
+
+<p>So that's our simple expert system.  To use it, we query
+<pre>
+?- diagnosis(D,P).
+</pre>
+And each answer that the Prolog interpreter finds to the query will bind <strong>D</strong></em> to
+a string representing a diagnosis, and bind <strong>P</strong></em> to the corresponding probability.  To
+find all diagnoses with nonzero probabilities, we can repeatedly type
+semicolons.
+
+<p>
+<h3>
+Graphical representation of probabilities in rule-based systems
+</h3>
+
+<p>The logic-gate representation of an and-or-not lattice (see Section 6.10)
+is a useful graphical notation for simple rule-based systems.  It can be used
+for rules with probabilities too.  Associate every "andcombine" and
+"orcombine" with a logic gate in the representation.  Indicate rule
+strengths next to their corresponding logic gates.  For rules with only
+one expression on their right side, use special triangle gates
+(<em>attenuators</strong></em>) with one input and one output.  Then
+each line has an associated probability, computed
+by proceeding from the inputs through the network, applying the proper formula
+at each gate.
+Figure 8-4 shows the and-or-not lattice for the example of the last section.
+
+<p>
+<h3>
+Getting probabilities from statistics
+</h3>
+
+<p>There's a more fundamental problem with probabilities than combining
+them, however: getting them in the first place.  If probabilities are
+markedly incorrect, reasoning based on them can't be trusted.  But getting
+good probabilities is often the hardest problem in building a rule-based
+system.  Even when programmers can easily decide what the predicates should
+be, what things rules should cover, and how rules should be structured, they
+often have trouble estimating probabilities because it's hard to tell when
+an estimate is wrong.  Two approaches are used: getting probabilities from
+statistics on data, and getting probabilities from human "experts".
+
+<p>Since people reason poorly about uncertainty,
+the first approach seems preferable.  Often we have a lot of
+routinely-collected data about the phenomena in
+a rule-based system, as when our rule-based system further
+automates human capabilities already partly automated.  We can
+approximate needed probabilities by frequency ratios in the data.
+For instance, we can approximate rule-strength probabilities by the ratio
+of the number of times the left side of a rule was
+satisfied to the number of times the right side was satisfied.
+
+<p>As an example, consider the repair of airplanes.  They are expensive, so
+an organization that owns many of them must keep detailed repair and
+maintenance
+records to ensure quality work, to better allocate resources, and to track down
+trends in malfunctions.  Most organizations today computerize these,
+recording observed malfunctions, their eventually inferred causes, and
+what was done to fix them--just what we need to assign probabilities to
+an expert system for diagnosis.  For instance, we can
+count how many times the radar system failed, and how many of those times
+the widget component was faulty, and take the ratio of the two counts
+to fill in <strong>&lt;strength&gt;</strong></em> in the rule:
+<pre>
+faulty(widget,&lt;strength&gt;) :- failed(radar).
+</pre>
+
+<p>However, approximating a real number (a probability) by the ratio
+of two integers can be hard, and the approximation is often poor
+when the integers are small.
+Suppose some event happens with probability 0.001, and
+we have data for 2000 occurrences.   On the average
+we'll expect two events in those 2000, but the number could be 1, 0, 3, or 4
+too, since the event is so rare.
+According to probability theory,
+random sets of size N, drawn from an infinite population with fraction
+F of its members possessing some property, will tend to show the same fraction
+F with standard error (standard deviation of this fraction) approximately
+<br>
+<pre>
+sqrt { F ( 1 - F ) / N }
+</pre>
+(using the binomial-distribution approximation).  This says how
+good a probability estimate is; the larger this number, the worse the estimate.
+As a rule of thumb, if the preceding is the same or larger than F, the F
+fraction should not be trusted.
+
+<p>As an example, suppose something happens 7 times out of 20 possible
+times.  Then |N = 20|, |F = 0.35|, and the standard error by the
+formula is 0.105.  This is significantly less than
+0.35, so the probability estimate 0.35 looks OK.
+
+<p>
+<h3>
+Probabilities derived from others
+</h3>
+
+<p>If a probability is important to our rule-based system, yet the
+associated standard error of approximation from data is large, we may be
+able to better estimate the probability from other data.
+One way is Bayes's Rule.  Letting
+|p ( A   given   B )| represent the probability of event A
+happening when event B also happens, we can say:
+<br>
+<pre>
+p ( A   given   B ) = { p ( A   "and"   B ) }   /   {  p ( B ) }
+</pre>
+But switching A and B in that equation:
+<br>
+<pre>
+p ( B   given   A ) = { p ( A   "and"   B ) }   /   {  p ( A ) }
+</pre>
+We can solve the second equation for |p ( A   "and"   B )|, and substitute
+in the first equation, obtaining the usual form of Bayes's Rule:
+<br>
+<pre>
+p ( A   given   B ) = { p ( B   given   A ) * p ( A ) }   /   { p ( B ) }
+</pre>
+This is a useful when we have a rule
+<pre>
+a(P) :- b(P2), andcombine([P2,&lt;strength&gt;],P).
+</pre>
+and we want to know what number to put for <strong>&lt;strength&gt;</strong></em>, the probability
+that <strong>a</strong></em> is true given that <strong>b</strong></em> is true.  If we have enough data to
+compute the reverse--the probability that <strong>b</strong></em> is true given that <strong>a</strong></em> is
+true--then Bayes's Rule can use that number, together with estimates of the
+overall probabilities of <strong>a</strong></em> and <strong>b</strong></em>, to give what we need.  This is an
+especially good idea when <strong>a</strong></em>
+<em>causes</strong></em>
+<strong>b</strong></em>, because then the reverse probability that <strong>b</strong></em> is true given that <strong>a</strong></em> is
+true must be 1.0.  For instance, a car absolutely will not start when its
+battery is dead, so we can approximate the probability that the battery is dead
+when the car won't start by the ratio of: the overall probability
+the battery is dead over the overall probability the car won't start.
+
+<p>There are extensions of Bayes's Rule, for instance:
+<br>
+<pre>
+p ( A   given   ( B   "and"   C ) ) = { p ( ( B   "and"   C )   given   A ) * p ( A ) }
+  /    { p ( B   "and"   C ) }
+</pre>
+
+<p>Another trick to get rule probabilities is to use the independence
+assumption in a special way.  Suppose we have:
+<pre>
+a(P) :- b(P1), c(P2), andcombine([P1,P2,&lt;strength&gt;],P).
+</pre>
+Now there may be few situations in the data in
+which both <strong>b</strong></em> and <strong>c</strong></em> were true.  But if there were many
+situations in which one of <strong>b</strong></em> and <strong>c</strong></em> was true,
+then we could estimate the probabilities
+of <strong>a</strong></em> given <strong>b</strong></em>, and <strong>a</strong></em> given <strong>c</strong></em>, and take the "or-combination" of these
+two numbers (yes, "or" not "and"; think about it)
+as an estimate of the rule strength needed.  That is, we can
+precompile an "orcombine".
+
+<p>
+<h3>
+Subjective probabilities
+</h3>
+
+<p>Even with these tricks we may not have enough data (or perhaps good enough
+data) to approximate probabilities very well.  Then we must
+guess probabilities ourselves, or preferably, ask a human expert in the
+task or domain of the rule-based system.  This
+isn't always easy: experts may be hard to find, or their time may be
+expensive, or they may not understand or feel comfortable with a rule
+formulation of their knowledge.  But there may be no other choice.
+
+<p>As we've said, humans make many mistakes in probability estimation,
+as demonstrated by psychological experiments.  One simple way to make
+things easier is to let people quantify uncertainty
+on a different numeric scale than 0.0 to 1.0.  For
+instance, take <em>degrees of certainty</strong></em> on a scale 0 to 100, and divide by 100
+to get the probability.  Better yet, do a nonlinear transformation of the
+probability scale, for instance with <em>odds</strong></em> defined
+as |p / ( 1 - p )|.  Odds range from 0 to positive infinity,
+so a probability of 0.9 is odds of 9, a probability of 0.5 is odds of 1,
+and a probability of 0.1 is odds of 0.111.  The logarithm of the
+odds is also useful; it "flattens out" the curve more, and ranges
+from minus infinity to plus infinity.
+
+<p>Something that also helps people is speaking of uncertainty
+nonnumerically.  For instance, let them use the terms
+"certain", "almost certain", "likely", "suggestive", "possible",
+"not likely", and "impossible".  Each term may map to a
+probability--say 1.00 for "certain", 0.99 for "almost certain",
+0.8 for "likely", 0.5 for "suggestive", 0.2 for "possible", 0.05 for "not
+likely", and 0.0 for "impossible".  If this isn't possible, perhaps
+different probabilities can be given for different contexts, so a
+"possible car problem" would be a 0.2 probability, but a
+"possible nuclear accident" would be 0.001 probability.
+
+<p>
+<h3>
+Maximum-entropy probabilities (*)
+</h3>
+
+<p>Bayes's Rule extends the utility of both statistics and
+subjective probability estimates.  We can
+generalize this idea, to accept arbitrary probabilities from the
+programmer--prior probabilities, conditional probabilities, and joint
+probabilities--and make "reasonable guess" estimates of others,
+using some mathematics.
+
+<p>It can be shown mathematically that best guesses (based on
+certain postulates for guess desirability) are those that maximize
+entropy, or minimize the <em>information content</strong></em>, of probability assignments.
+This is a mathematical optimization problem, in which we want to maximize
+<br>
+<pre>
+sum from {i=1} to m left ( - p ( A sub i ) log ( p ( A sub i ) ) right )
+</pre>
+for some mutually exclusive set of probabilities |p ( A sub i )| that sum to
+1, subject to given equality constraints in the form of probabilities
+already known.  Optimization problems like this can
+be attacked by many methods from operations research, and computer packages
+are available.  But they can take time since they usually iterate.
+
+<p>Sometimes we don't need to iterate to find maximum-entropy
+probabilities, but we can use algebraic manipulations to get
+formulas.  Here's an example for those of you that know some calculus.
+Suppose we know the probabilities of two events A and B,
+|p ( A )| and |p ( B )|.  Suppose we want to find the maximum-entropy
+probability for |x = p ( A   "and"   B)| (i.e., we want to do "and-combination"
+in a maximum-entropy way).  Then there are four mutually exclusive probabilities
+involved: |p ( A   "and"   B) , p ( A bar   "and"   B ) , p ( A   and   B bar ) ,
+p ( A bar   "and"   B bar )|, where we use |A bar| to represent the exact
+opposite of A, so |p ( A bar ) = 1 - p ( A )|.  Then
+<br>
+<pre>
+p ( A   "and"   B ) = x   ,    p ( A bar   "and"   B ) = p ( B ) - x   ,  
+p ( A   "and"   B bar ) = p ( A ) - x   ,
+</pre>
+<pre>
+p ( A bar   "and"   B bar ) = 1 - p ( A ) - p ( B ) + x
+</pre>
+And the preceding summation formula for the entropy is
+<br>
+<pre>
+- x log ( x ) - ( p ( B ) - x ) log ( p ( B ) - x ) -
+( p ( A ) - x ) log ( p ( A ) - x )
+</pre>
+<pre>
+ - ( 1 - p ( A ) - p ( B ) + x ) log ( 1 - p ( A ) - p ( B ) + x )
+</pre>
+To find the maximum of this, we take the derivative with respect to x,
+and set this to zero.  Noting that the derivative of |y log ( y )|
+with respect to x is |( 1 + log ( y ) ) dy / dx |, we get:
+<br>
+<pre>
+- log ( x ) + log ( p ( B ) - x ) + log ( p ( A ) - x )
+- log ( 1 - p ( A ) - p ( B ) + x ) = 0
+</pre>
+<br>
+<pre>
+log [ x ( 1 - p ( A ) - p ( B ) + x ) / ( p ( A ) - x ) ( p ( B ) - x ) ] = 0
+</pre>
+<br>
+<pre>
+x sup 2 - ( p ( A ) + p ( B ) ) x + p ( A ) p ( B ) =
+x sup 2 + ( 1 - p ( A ) - p ( B ) ) x
+</pre>
+<br>
+<pre>
+x = p ( A ) p ( B)
+</pre>
+This is just the independence-assumption formula.  So the formula we
+justified intuitively in Section 8.3 has a deeper justification.  Formulas for
+more complicated situations can also be derived with the method.
+
+<p>
+<h3>
+Consistency (*)
+</h3>
+
+<p>Another problem with subjective probabilities (but also to a lesser
+extent with data-derived probabilities) is that they can be inconsistent
+(logically impossible) in a nonobvious way.
+This often happens when both a priori (unconditional) and conditional
+probabilities are specified by people.  We should therefore run checks
+on user-given probabilities before entering them into a rule-based system.
+
+<p>As an example, note from the definition of conditional probability that
+<br>
+<pre>
+0 &lt;= p ( A   given   B ) p ( B ) = p ( B   given   A ) p ( A ) &lt;= 1
+</pre>
+Hence
+<br>
+<pre>
+p ( A ) &gt;= p ( A   given   B ) p ( B )  
+</pre>
+<br>
+<pre>
+p ( B   given   A ) &gt;= p ( A   given   B ) p ( B )
+</pre>
+<br>
+<pre>
+p ( B ) &gt;= p ( B   given   A ) p ( A )  
+</pre>
+<br>
+<pre>
+p ( A   given   B ) &gt;= p ( B   given   A ) p ( A )
+</pre>
+so we can catch some inconsistencies from inequalities.
+
+<p>
+<h2>
+Keywords:
+</h2>
+
+<p>
+<pre>
+<em>probability
+uncertainty
+or-combination
+and-combination
+rule probability
+conclusion probability
+independence assumption
+conservative assumption
+liberal assumption
+Bayes's rule
+scale transformations
+maximum-entropy estimates</strong></em>
+</pre>
+
+<p>.SH
+</em></strong>
+Exercises
+
+<p>8-1. Assume:
+<blockquote>
+1. The battery is defective with certainty 0.5 when a car won't start.
+<br>
+2. The battery is defective with certainty 0.8 when the radio is
+functioning and the radio won't play.
+<br>
+3. You are not sure if your radio is functioning--the probability is 0.9
+that it is functioning.
+<br>
+4. This morning your car won't start and the radio won't play.
+</blockquote>
+What is the cumulative probability that your battery is defective this
+morning?  Combine evidence assuming independence of probabilities.
+
+<p>8-2. Consider these rules (the arguments are all probabilities):
+<pre>
+a(P) :- b(P2), P is P2 * 0.6.
+a(P) :- c(P).
+</pre>
+Suppose <strong>b</strong></em> is known to be absolutely certain, and <strong>c</strong></em> is 80 percent certain.
+
+<p>(a) What is the cumulative probability of <strong>a</strong></em> using the independence
+assumption?
+
+<p>(b) What is the cumulative probability of <strong>a</strong></em> using the conservative
+assumption?
+
+<p>(c) What is the cumulative probability of <strong>a</strong></em> using the liberal assumption?
+
+<p>8-3. (R,A) Suppose we want to fill in the <strong>&lt;prob1&gt;</strong></em> and <strong>&lt;prob2&gt;</strong></em>
+probability
+values in the following two rules that infer a flat tire on a car:
+<pre>
+flat_tire(&lt;prob1&gt;) :- car_steers_strangely.
+flat_tire(&lt;prob2&gt;) :- just_ran_over_something.
+</pre>
+
+<p>(a) Suppose we have statistics that say:
+<blockquote>
+-- In 200 situations in which the car steered strangely the tire was
+flat, out of 500 situations in which the car steered strangely;
+
+<p>-- In 800 situations in which you just ran over something the tire was
+discovered to be flat, out of 1600 situations in which you just ran over
+something;
+
+<p>-- A flat tire was observed in 1200 situations total.
+</blockquote>
+
+<p>Estimate <strong>&lt;prob1&gt;</strong></em> and <strong>&lt;prob2&gt;</strong></em> for these statistics.
+
+<p>(b) Suppose we also know that 70 times in which both the car steered
+strangely and you just ran over something the tire was then found
+to be flat, out of 101 times in which both those two things were
+observed.  Which probability combination method (or-combination)
+for the preceding
+two rules is best confirmed here: conservative, independence-assumption,
+or liberal?
+
+<p>8-4. (A) Suppose you want to handle or-combination of uncertainties
+nonnumerically.  Suppose the possible degrees of uncertainty
+are "definitely", "probably", "probably not", and "definitely not".
+
+<p>(a) Suppose the "orcombine" function of any two of those four terms
+is defined by the table in Figure 8-5.
+Each row and column represent a pair of values to be combined.
+Which of the numerical or-combination methods is this equivalent to:
+conservative, independence-assumption, liberal, or something else?
+
+<p>(b) Suppose the "orcombine" function of any two of those four
+terms is defined by the table in Figure 8-6.
+Which of the numerical or-combination methods is this equivalent to:
+conservative, independence-assumption, liberal, or something else?
+
+<p>(c) For the method of part (b), suppose you want to map
+"definitely", "probably", "probably not", and "definitely not"
+into probabilities.  It makes sense to have "definitely" = 1.0 and
+"definitely not" = 0.0.   Give probabilities for "probably" and "probably not"
+consistent with the table in part (b).  (There are an infinite number of answers.)
+
+<p>8-5. (A) Combination methods for probabilities use the Prolog <strong>is</strong></em>, which
+requires its arithmetic calculation to refer to only bound variables.
+Consider a rule-based system that uses rules with probabilities and calculates
+on those probabilities.  Does the directionality of <strong>is</strong></em>
+mean that  one of either backward chaining or forward chaining is impossible?  Why?
+
+<p>8-6. (R,A)  Consider the following way of doing or-combination of probabilities
+in an expert system: the cumulative probability is the fraction of
+the contributing probabilities that are greater than 0.5.
+So for instance the cumulative probability for contributing
+probabilities 0.3, 0.9, 0.66, 0.2, and 0.8 would be 0.6.
+
+<p>(a) Define a Prolog predicate <strong>new_orcombine(PL,P)</strong></em>
+that computes the cumulative probability <strong>P</strong></em> of a list <strong>PL</strong></em>
+using this method.
+
+<p>(b) Give two major disadvantages of this method, disadvantages not
+shared by the three methods discussed in the chapter, and explain
+why they are major.
+
+<p>8-7. Suppose we have R rules concluding D diagnoses such that there are
+the same number of rules concluding each diagnosis, |R / D|.  Assume
+no intermediate predicates; have each diagnosis rules refer to facts.
+Suppose the probability of any
+rule succeeding in a random situation is P, and suppose this probability
+is independent of the success or failure of other rules.
+
+<p>(a) How many rules will succeed for a situation on the average?
+
+<p>(b) How many diagnoses will succeed for a situation on the average?
+
+<p>8-8. (G) Write 10 or so Prolog rules to predict what the weather will
+be at 3 P.M. some day, reasoning at noon that day,
+using probabilities as an additional argument to all predicates
+that have uncertainty.  All rules should have a left side of
+the form <strong>predict(&lt;weather&gt;,&lt;probability&gt;)</strong></em>, where <strong>&lt;weather&gt;</strong></em> is either <strong>sunny</strong></em>,
+<strong>partly_cloudy</strong></em>, or <strong>cloudy</strong></em>.  Choose a good evidence-combination method.
+
+<p>Assume the following predicates are available as the basis
+for your reasoning at noon.  (Try to define some intermediate
+predicates based on these, which can then be combined to make
+predictions, to make things more interesting.)
+<blockquote>
+<strong>current_west_view(&lt;weather&gt;)</strong></em>: whether the given weather is viewable
+from a west-facing window right now.  The argument can be
+<strong>sunny</strong></em>, <strong>partly_cloudy</strong></em>, or <strong>cloudy</strong></em>.
+
+<p><strong>current_east_view(&lt;weather&gt;)</strong></em>: same for east-facing window.
+
+<p><strong>raining(&lt;degree&gt;)</strong></em>: whether it is raining to that degree right now.
+The <strong>&lt;degree&gt;</strong></em> can be <strong>light</strong></em>, <strong>steady_heavy</strong></em>, and <strong>cloudburst</strong></em>.
+
+<p><strong>weatherman_prediction(&lt;weather&gt;)</strong></em>: whether the TV weatherman predicted
+that weather for 6 P.M. last night at 11 P.M.
+
+<p><strong>grandma_prediction(&lt;weather&gt;)</strong></em>: whether Grandma predicted that weather this
+morning from how her joints hurt.
+
+<p><strong>grandma_memory</strong></em>: whether you remember anything Grandma said that morning.
+
+<p><strong>radio_prediction(&lt;weather&gt;)</strong></em>: the weather predicted right now on the local
+radio news station.
+
+<p><strong>secretary_has_radio</strong></em>: you don't have a radio, but the secretary down the
+hall might.
+
+<p><strong>secretary_out_to_lunch</strong></em>: if they are out to lunch, the room is locked, and
+you can't get in.
+</blockquote>
+
+<p>8-9. (A,E) Consider the following argument: "Spending money on the lottery
+must be a good thing, because you constantly hear about people winning
+big bucks in the battery, in the newspapers and on television."
+
+<p>(a) What is the fallacy (reasoning error) here?
+
+<p>(b) What warning does this illustrate for using probabilities in rule-based
+systems?
+
+<p>8-10. Most students are adults (l8 years old or more).  Most adults are
+employed.  We could write:
+<pre>
+adult(X,P) :- student(X,P2), P is P2 * 0.95.
+
+<p>employed(X,P) :- adult(X,P2), P is P2 * 0.9.
+</pre>
+Then if we knew that Joe was a student with complete certainty, these rules
+say that Joe is employed with 0.855 probability, a clearly fallacious
+conclusion because most students don't work at all, as any
+professor will tell you.  This fallacy is due to a simplification that we have
+made to make our analysis in the chapter easier.
+
+<p>(a) Show how the problem can be fixed by writing one rule as two.
+
+<p>(b) Suppose we consider this rule rewriting as awkward and we wish to fix
+things by just changing the probability combination method.  The previous method
+was independence-assumption combination.  What happens to the probability of
+Joe being employed when we use the conservative assumption?
+
+<p>(c) The conservative assumption does not give a reasonable answer either.  How
+can we solve this problem in a reasonably general way?
+
+<p>8-11. (E) (a)  In English, double negatives don't always mean what you
+expect them to mean.  Explain why "not unhappy" is different from "happy".
+
+<p>(b) What warning does this suggest to the designer of a rule-based expert system
+using probabilities?  In particular, for what sorts of English words should
+a designer be careful?
+
+<p>8-12. (P,G) Design a program to diagnose problems with cars.  Many artificial
+intelligence applications involve diagnosis, and automatic diagnostic aids
+really help.  We pick cars because almost everybody knows
+something about them, and we don't need to hire outside experts as with
+most expert systems.  This diagnosis program should be usable by
+people who know virtually nothing about cars; it should use
+nontechnical words and familiar concepts.  For instance, it shouldn't
+expect that a user knows what different sounds mean, and should try to
+describe sounds by analogies to everyday sounds.
+
+<p>An important part of the project will be the formal definition of
+concepts that may be concluded (e.g., "the car won't start").
+Another part will be enumeration of things a user could be expected to
+know; in particular, try to use knowledge of the history of the
+car, what problems it has had in the past.  Try not to get too
+technical; there are plenty of "common-sense"
+things about cars, particularly for the body and interior
+of the passenger compartment.  For instance, one cause of a rattle
+in a car could be a baby's rattle under the seat.
+
+<p>Handle uncertain data and uncertain conclusions.  Probably the easiest
+approach is  independence-assumption combination.  Decide initial values
+for probabilities, and how to treat evidence against something.
+
+<p>If this is a group project, one person should handle the control structure
+of the program and provide utilities for everyone else.
+Other people can specialize in different systems of
+the car.  For instance, someone should probably handle the body and
+interior of the car, someone the electrical system, someone the engine
+and fuel system, etc.  About thirty rules should be written by each
+contributor.  Emphasize quality of the rules, not quantity.
+
+<p>
+<p><A HREF="book.html">Go to book index</A>
+</body>
+</html>

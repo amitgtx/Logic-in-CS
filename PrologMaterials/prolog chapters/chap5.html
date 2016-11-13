@@ -1,0 +1,1216 @@
+<html>
+<body>
+<hr>
+<h2>
+Arithmetic and lists in Prolog
+</h2>
+
+<p>Before going any further, we need to introduce two
+additional features of Prolog that will come in handy in writing
+future programs, arithmetic and lists.  These give rules
+new capabilities.  As we've seen already, rules can:
+<blockquote>
+<br>
+1. define new predicates in terms of existing predicates
+<br>
+2. extend the power of existing predicates (as with inheritance rules)
+<br>
+3. recommend what to do in a situation (as with the traffic
+lights program)
+</blockquote>
+To these, we'll now add:
+<blockquote>
+4. quantify and rank things
+<br>
+5. store, retrieve, and manipulate sets and sequences of data items
+</blockquote>
+
+<p>
+<h3>
+Arithmetic comparisons
+</h3>
+
+<p>Prolog has built-in arithmetic comparison predicates.  But their predicate
+expressions are written differently from those shown so far: they're
+written in the <em>infix</strong></em> notation of mathematics.  The predicate
+name comes between the arguments, like this:
+<blockquote>
+<strong>3 &gt; 4</strong></em> means 3 is greater than 4
+<br>
+<strong>15 = 15</strong></em> means 15 equals 15
+<br>
+<strong>X &lt; Y</strong></em> means <strong>X</strong></em> is less than <strong>Y</strong></em>
+<br>
+<strong>Z &gt;= 4</strong></em> means <strong>Z</strong></em> is greater than or equal to 4
+<br>
+<strong>PPPP =&lt; 3</strong></em> means PPPP is less than or equal to 3
+</blockquote>
+We'll usually put spaces around infix symbols to make them easier to see,
+but it's not required.  As an example, here's the definition of a predicate
+that checks if a number is positive:
+<pre>
+positive(X) :- X &gt; 0.
+</pre>
+With this definition in our database, it could be used like this:
+<pre>
+?- positive(3).
+yes
+?- positive(-6).
+no
+</pre>
+Here's the definition of a predicate that checks if its first argument
+is a number lying in the range from its second to its third argument,
+assuming all arguments are bound:
+<pre>
+in_range(X,Y,Z) :- X &gt;= Y, X =&lt; Z.
+</pre>
+Using this definition, the query
+<pre>
+?- in_range(3,0,10).
+</pre>
+gives the response <strong>yes</strong></em>.
+
+<p>
+<h3>
+Arithmetic assignment
+</h3>
+
+<p>Like any computer language, Prolog has arithmetic computations and
+assignment statements.  Arithmetic assignment is done by
+expressions with the infix <strong>is</strong></em> predicate.  Querying these peculiar
+expressions has the side effect of binding some variable
+to the result of some arithmetic computation.  For instance
+<pre>
+X is ( 2 * 3 ) + 7
+</pre>
+binds (assigns) <strong>X</strong></em> to the value 13 (2 times 3 plus 7).
+The thing to the left of the <strong>is</strong></em> must be a variable name, and the stuff
+to the right must be an algebraic formula of variables and numeric
+constants, something that evaluates to a number.  The algebraic formula
+is written in standard infix form, with operations <strong>+</strong></em>, (addition),
+<strong>-</strong></em> (subtraction), <strong>*</strong></em> (multiplication), and <strong>/</strong></em> (division).  We'll often
+put spaces around these symbols to make them more readable.  The algebraic
+formula can have variables only if they're bound to values, as in
+<pre>
+Y is 2, X is Y * Y.
+</pre>
+where <strong>Y</strong></em> is first bound to 2, and then <strong>X</strong></em> is bound to 4.  A practical example
+is this definition of the square of a number, intended to be
+a function predicate:
+<pre>
+square(X,Y) :- Y is X * X.
+</pre>
+If this rule is in the Prolog database, then if we query
+<pre>
+?- square(3,Y).
+</pre>
+(that is, if we ask what the square of 3 is), the Prolog interpreter
+will type
+<pre>
+Y=9
+</pre>
+
+<p>Notice that since predicate expressions aren't functions in Prolog, we can't
+write anything like
+<pre>
+f(X,Y) + g(X,Z)
+</pre>
+even if <strong>f</strong></em> and <strong>g</strong></em> are function predicates, because expressions only succeed or
+fail; expressions don't have "values".  Instead, to add the two function values
+we must say something like
+<pre>
+f(X,Y), g(X,Z), T is Y + Z
+</pre>
+
+<p>Another warning: don't confuse <strong>=</strong></em> with <strong>is</strong></em>.  The
+<strong>=</strong></em> is a purely logical comparison of whether two things are
+equal.  (Originally intended for numbers, it also works for
+words.)  The <strong>is</strong></em> is an operation, an arithmetic
+assignment statement that figures out a value and binds a variable to it.
+
+<p>
+<h3>
+Reversing the "is"
+</h3>
+
+<p>A serious weakness of arithmetic, which makes it different
+from everything else in Prolog we've talked about so far, is that
+it isn't multiway or reversible.  For instance, if we have the
+preceding definition of <strong>square</strong></em> in our database, and we query
+<pre>
+?- square(X,9).
+</pre>
+wondering what number squared is 9, the interpreter will refuse to do
+anything because the right side of the <strong>is</strong></em> statement refers to an
+unbound variable.  This is
+different from having a bunch of arithmetic facts in <em>prefix</strong></em> form like
+<pre>
+square(0,1).
+square(1,1).
+square(2,4).
+square(3,9).
+</pre>
+for which we could query <strong>square(3,Y)</strong></em> or <strong>square(X,9)</strong></em> or even <strong>square(X,Y)</strong></em>
+</pre>
+and get an answer.  Similarly, for the preceding definition
+of <strong>positive</strong></em>, the query
+<pre>
+?- positive(X).
+</pre>
+won't work: the interpreter can only do a <strong>&gt;</strong></em> comparison when both things
+are bound to numbers.  So it will complain and refuse to do anything.
+
+<p>The Prolog interpreter's excuse for its behavior is that
+function inversion and other such <em>multiway reasoning</strong></em> is hard to do in
+general, and sometimes is impossible.  A square of a number is easy to compute,
+but a square root requires iterative approximation and a lot
+more code.  And there are an infinity of positive numbers; where should
+an interpreter start when asked to give one?
+Artificial intelligence requires flexible reasoning capable
+of going in many different directions--people seem to do it.
+So it's desirable to get around the interpreter's limitations.
+
+<p>One way is to provide additional rules for a predicate definition.
+Helpful in this is the built-in Prolog predicate <strong>var</strong></em> of one argument,
+which succeeds if that argument is an unbound variable, and fails otherwise.
+As an example of its use, consider a <strong>better_add</strong></em> predicate
+of three arguments
+which says the sum of the first two arguments is the third argument.
+If all three arguments are bound (inputs), then it checks the addition.
+If the first two arguments are bound, it binds the third to their sum.
+If the first and third arguments are bound, it binds the second to the
+difference of the third and the first.  Similarly if the second and third
+arguments are bound, it binds the first to the difference of the third
+and second.  Here's the code (<strong>Z</strong></em> is a temporary-storage variable):
+<pre>
+better_add(X,Y,S) :- not(var(X)), not(var(Y)), not(var(S)),
+  Z is X + Y, Z=S.
+better_add(X,Y,S) :- not(var(X)), not(var(Y)), var(S),
+  S is X + Y.
+better_add(X,Y,S) :- not(var(X)), var(Y), not(var(S)),
+  Y is S - X.
+better_add(X,Y,S) :- var(X), not(var(Y)), not(var(S)),
+  X is S - Y.
+</pre>
+We can't handle two arguments unbound; then there's an infinite number
+of possibilities for the bindings.  But at least the preceding handles
+three more cases than the Prolog <strong>is</strong></em> can handle by itself.
+
+<p>The <strong>in_range</strong></em> predicate of Section 5.1 can provide another example
+of a predicate enhancement. That predicate checked whether its first
+argument (an input number) was between the second and third arguments
+(input numbers too).
+We can improve <strong>in_range</strong></em> so that an unbound first argument will make it
+<em>generate</strong></em>
+a number between other two arguments, and generate further numbers
+on backtracking.  To make things easier, we'll assume all numbers will
+be integers.  Here's the definition of this <strong>integer_in_range</strong></em>:
+<pre>
+integer_in_range(X,Y,Z) :- not(var(X)), not(var(Y)), not(var(Z)),
+  X &gt;= Y, X =&lt; Z.
+integer_in_range(X,Y,Z) :- var(X), not(var(Y)), not(var(Z)),
+  Y =&lt; Z, X is Y.
+integer_in_range(X,Y,Z) :- Y =&lt; Z, Y2 is Y + 1,
+integer_in_range(X,Y2,Z).
+</pre>
+This is a <em>tail-recursive</strong></em> program of a form we'll use
+many times in this chapter.  (Again, see Appendix B to review recursion.)
+The first rule handles the case handled before.  The second rule says
+if <strong>X</strong></em> is unbound and <strong>Y</strong></em> and <strong>Z</strong></em> are bound, and we want to generate
+an integer on the range <strong>Y</strong></em> to <strong>Z</strong></em>, we can always pick <strong>Y</strong></em>.
+Otherwise (if a semicolon is typed), the third rule is used.  It "crosses out"
+<strong>Y</strong></em> from the range by increasing the lower limit of the range by 1,
+and generates
+an integer from this new, narrower range.  If the range ever decreases so
+much that it disappears, all the rules fail.  So if we query
+<pre>
+?- integer_in_range(X,1,10).
+</pre>
+the interpreter first replies <strong>X=1</strong></em>; then if we type a semicolon, <strong>X=2</strong></em>;
+then if we type a semicolon, <strong>X=3</strong></em>; and so on up to 10.
+
+<p>
+<h3>
+Lists in Prolog
+</h3>
+
+<p>Another important feature of Prolog is linked-lists.  Every argument in
+a predicate expression in a query must be anticipated and planned for.
+To handle sets and sequences of varying or unknown length, we need something
+else: linked-lists, which we'll henceforth call just <em>lists</strong></em>.
+
+<p>Lists have always been important in artificial intelligence.  Lisp, the
+other major artificial intelligence programming language, is almost entirely
+implemented with lists--even programs are lists in Lisp.
+The extra space that lists need compared to arrays
+(see Appendix C) is more than compensated in artificial intelligence
+applications by the flexibility possible.
+
+<p>Square brackets indicate a Prolog list, with commas separating items.  For
+example:
+<pre>
+[monday,tuesday,wednesday,thursday,friday,saturday,sunday]
+</pre>
+(Don't confuse square brackets "<strong>[]</strong></em>" with parentheses "<strong>()</strong></em>"; they're
+completely different in Prolog.  Brackets group lists and
+parentheses group arguments.)  Lists can be values of variables
+just like words and numbers.  Suppose we have the following facts:
+<pre>
+weekdays([monday,tuesday,wednesday,thursday,friday]).
+weekends([saturday,sunday]).
+</pre>
+Then to ask what days are weekdays, we type the query
+<pre>
+?- weekdays(Days).
+</pre>
+and the answer is
+<pre>
+Days=[monday,tuesday,wednesday,thursday,friday]
+</pre>
+
+<p>We can also bind variables to items of lists.  For instance, if
+we query
+<pre>
+?- weekends([X,Y]).
+</pre>
+with the preceding facts in the database, we get
+<pre>
+X=saturday, Y=sunday
+</pre>
+But that last query requires that the weekends list have exactly
+two items; if we query
+<pre>
+?- weekends([X,Y,Z]).
+</pre>
+we get <strong>no</strong></em> because the query list can't be made to match the data
+list by some binding.
+
+<p>We can work with lists of arbitrary length by the standard methods
+for linked-pointer list manipulation.  We can refer
+to any list of one or more items as <strong>[X|Y]</strong></em>, where <strong>X</strong></em> is the first
+item and <strong>Y</strong></em> is the rest of the list (that is, the list
+of everything but the first item in the same order) | REFERENCE 1|.
+.FS
+ | REFERENCE 1| In the language Lisp, <strong>X</strong></em> is called the <em>car</strong></em>
+and <strong>Y</strong></em> is called <em>cdr</strong></em> of the list.
+.FE
+We'll call "<strong>|</strong></em>" the <em>bar</strong></em> symbol.
+Note that <strong>[X|Y]</strong></em> is quite different from <strong>[X,Y]</strong></em>; the first can have any
+nonzero number of items, whereas the second must have exactly two items.
+Note also that <strong>X</strong></em> and <strong>Y</strong></em> are different data types in
+<strong>[X|Y]</strong></em>; <strong>X</strong></em> is a single item, but <strong>Y</strong></em> is a list of items.  So <strong>[X|Y]</strong></em> represents
+an uneven division of a list.
+
+<p>Here are some examples with the previous weekdays and weekends facts.
+<pre>
+?- weekdays([A|L]).
+A=monday, L=[tuesday,wednesday,thursday,friday]
+</pre>
+<pre>
+?- weekdays([A,B,C|L]).
+A=monday, B=tuesday, C=wednesday, L=[thursday,friday]
+</pre>
+<pre>
+?- weekends([A,B|L]).
+A=saturday, B=sunday, L=[]
+</pre>
+The "<strong>[]</strong></em>" is the list of zero items, the <em>empty list</strong></em> | REFERENCE 2|.
+.FS
+ | REFERENCE 2| Called <em>nil</strong></em> in the language Lisp.
+.FE
+
+<p>
+<h3>
+Defining some list-processing predicates
+</h3>
+
+<p>Let's write some famous list-processing programs (summarized in Figure 5-1).
+Programs requiring many lines of code in conventional programming
+languages can often be quite short in Prolog because of its declarative
+nature.  We'll define mostly function predicates.
+Following the convention of Section 2.9, the
+function result is the last argument of their predicate expressions.
+
+<p>First, here's a definition of a predicate that computes the
+first item of an indefinitely long list:
+<pre>
+first([X|L],X).
+</pre>
+This definition is a fact, not a rule--but remember, facts are just
+rules with no right side.  So <strong>X</strong></em> stands for any item, and <strong>L</strong></em> stands
+for any list.
+
+<p>Here's a definition of the last item of a list:
+<pre>
+last([X],X).
+last([X|L],X2) :- last(L,X2).
+</pre>
+The first line says that the last item of a list of one item is
+that item.  The second line says the last item of any other nonempty list
+is the last item of the list formed by removing the first item.  This is
+a tail-recursive program with the first line the <em>basis step</strong></em> (simple
+nonrecursive case) and the second line the <em>induction step</strong></em>
+(recursive case).  Tail recursion is the standard way to
+define list-processing predicates in Prolog, with each recursion chopping
+one item off a list.
+
+<p>We can use <strong>first</strong></em> and <strong>last</strong></em> just like the predicate definitions in
+Chapter 4, to work on data we type in.  For instance:
+<pre>
+?- last([monday,tuesday,wednesday,thursday,friday],X).
+X=friday
+</pre>
+We can also use it on lists in the database by doing a
+database retrieval first.  Suppose we have a database fact:
+<pre>
+weekdays([monday,tuesday,wednesday,thursday,friday]).
+</pre>
+Then we could find out the last weekday by:
+<pre>
+?- weekdays(L), last(L,X).
+L=[monday,tuesday,wednesday,thursday,friday], X=friday
+</pre>
+
+<p>As another example of a list-processing definition,
+consider <strong>member(X,L)</strong></em> which is true
+if item <strong>X</strong></em> is a member of list <strong>L</strong></em>.  We can give the following fact and rule
+(note the order: the recursive part of a definition should always come
+after the nonrecursive, to avoid an infinite loop) | REFERENCE 3|:
+<pre>
+member(X,[X|L]).
+member(X,[Y|L]) :- member(X,L).
+</pre>
+.FS
+ | REFERENCE 3| Recursive list-processing predicate definitions, and many
+other recursive definitions too, can be made considerably more efficient
+by Prolog's built-in "cut" predicate (symbolized by
+"<strong>!</strong></em>"), to be explained in Section 10.7.
+For instance, a better version of <strong>member</strong></em> for most purposes is:
+<strong>member(X,[X|L]) :- !.
+<br>
+member(X,[Y|L]) :- member(X,L).</strong></em>
+.FE
+The fact says that <strong>X</strong></em> is a member of any list where it is the
+first item; there's no need to check the rest of the list then.  Otherwise,
+figure out if <strong>X</strong></em> is a member of the rest of the list, and that's the answer.
+Notice there's no need to give conditions under which <strong>member</strong></em> fails, like
+<pre>
+member(X,[]) :- 1=2.
+</pre>
+Since 1 can never equal 2, this rule never succeeds.  But in Prolog, failure
+failing when we use a rule means the same thing as no rule at all.
+So the immediately preceding rule is completely useless.
+
+<p>We just gave a declarative
+explanation of the <strong>member</strong></em> predicate.  For a <em>procedural</strong></em> explanation (though
+we emphasize again that this is not the best way to understand recursive
+programs), consider the query
+<pre>
+?- member(dick,[tom,dick,harry]).
+</pre>
+The first line of the <strong>member</strong></em> definition fails because <strong>dick</strong></em> is not <strong>tom</strong></em>.
+So the second line is used, creating a recursive call
+<pre>
+?- member(dick,[dick,harry]).
+</pre>
+for which the first line succeeds.  So the original query gives <strong>yes</strong></em>.
+
+<p>The <strong>member</strong></em> definition will also work when the first argument
+is unbound (an output).  Then the program
+<em>generates</strong></em>
+members of a list in succession under backtracking, something
+quite useful for artificial-intelligence programs.  Consider
+the query:
+<pre>
+?- member(X,[tom,dick,harry]).
+</pre>
+When the interpreter executes this, the first line of the program can match
+<strong>X=tom</strong></em>, and this binding is printed out.  If we now type a semicolon,
+we request a different binding, forcing the interpreter to use the second
+rule.  So this recursive call is executed:
+<pre>
+?- member(X,[dick,harry]).
+</pre>
+And for this new query the first line can succeed, giving the result
+<strong>X=dick</strong></em>.  If we type another semicolon, we'll be querying
+<pre>
+?- member(X,[harry]).
+</pre>
+and we'll get <strong>X=harry</strong></em>; and if we type yet another semicolon,
+we'll be querying
+<pre>
+?- member(X,[]).
+</pre>
+and we'll get <strong>no</strong></em>.
+
+<p>Here's a predicate <strong>length(L,N)</strong></em> that computes length <strong>N</strong></em> of a list <strong>L</strong></em>:
+<pre>
+length([],0).
+length([X|L],N) :- length(L,N2), N is N2 + 1.
+</pre>
+Remember, <strong>[]</strong></em> represents the <em>empty list</strong></em>, the list with no members.
+The first line says the empty list has length zero.  The
+second line says that the length of any other list is just one more than the
+length of the list created by removing the first item.  For instance:
+<pre>
+?- length([a,b,c,d],N).
+N=4
+</pre>
+
+<p>Here's a predicate <strong>max(L,M)</strong></em> that computes the maximum of a list <strong>L</strong></em>
+of numbers:
+<pre>
+max([X],X).
+max([X|L],X) :- max(L,M), X &gt; M.
+max([X|L],M) :- max(L,M), X =&lt; M.
+</pre>
+The first line says the maximum of a list of one item is that item.
+The second line says that the first number in a list is the maximum
+of the list if it's greater than the maximum for the rest of the
+list.  The third line says the maximum of a list is the maximum for all but
+the first item of the list if neither of the first two rules applies.
+For instance:
+<pre>
+?- max([3,7,2,6,1],N).
+N=7
+</pre>
+
+<p>
+<h3>
+List-creating predicates
+</h3>
+
+<p>Suppose we want to delete every occurrence of some item from
+a list, creating a new list.  We can do this with a predicate <strong>delete</strong></em>
+of three arguments: (1) the item <strong>X</strong></em> we want to get rid of (an input),
+(2) the initial list <strong>L</strong></em> (an input), and (3) the final list <strong>M</strong></em> (an output).
+And we'll assume that's the only pattern of inputs and outputs we'll
+ever use.  For instance:
+<pre>
+?- delete(b,[b,a,b,b,c],M).
+M=[a,c]
+</pre>
+To define this, we could write:
+<pre>
+delete(X,[],[]).
+delete(X,[X|L],M) :- delete(X,L,M).
+delete(X,[Y|L],Mnew) :- not(X=Y), delete(X,L,M), Mnew is [Y|M].
+</pre>
+But there's a better way to write the last rule: we can move the <strong>[Y|M]</strong></em>
+list to the left side.  This is good because (1) the <strong>is</strong></em> is
+unnecessary because left sides can also bind variables, and (2) <strong>is</strong></em> isn't
+completely reversible, and we'd like a more multiway program.  So
+we could use instead:
+<pre>
+delete(X,[],[]).
+delete(X,[X|L],M) :- delete(X,L,M).
+delete(X,[Y|L],[Y|M]) :- not(X=Y), delete(X,L,M).
+</pre>
+This works the same, even with the third argument unbound, because nothing
+can be done with the <strong>[Y|M]</strong></em> on the left side until the right side is executed
+and <strong>M</strong></em> is bound.  So the construction of <strong>[Y|M]</strong></em> remains the last
+thing done by the third rule.
+
+<p>You may be puzzled why the <strong>not(X=Y)</strong></em> in the third line is necessary.
+We could write
+<pre>
+delete(X,[],[]).
+delete(X,[X|L],M) :- delete(X,L,M).
+delete(X,[Y|L],[Y|M]) :- delete(X,L,M).
+</pre>
+The <strong>delete</strong></em> predicate never fails for its first two arguments bound; one
+of those three rules must always succeed.  So if the second line
+fails, the left side must be at fault, and <strong>X</strong></em> and <strong>Y</strong></em> must be different,
+right?  Yes, but only the
+<em>first</strong></em>
+time through.  If we ever backtrack into this <strong>delete</strong></em>, we'll be in trouble
+because backtracking would use the third rule for some situation in which it
+used the second rule previously.  For instance:
+<pre>
+?- delete(b,[a,b,a,b,c],L).
+L=[a,a,c] ;
+L=[a,a,b,c] ;
+L=[a,b,a,b,c] ;
+no
+</pre>
+So be careful in Prolog programming: just because something works OK for its
+first answer doesn't mean it will work OK on backtracking to get new answers.
+
+<p>Next, here's a useful predicate that "appends" (concatenates) one list
+to another.  It has three arguments: the first list, the second list,
+and the combined list.
+<pre>
+append([],L,L).
+append([X|L1],L2,Lnew) :- append(L1,L2,L3), Lnew is [X|L3].
+</pre>
+As with <strong>delete</strong></em>, we can rewrite the last rule to eliminate the
+awkward and undesirable <strong>is</strong></em>, moving the <strong>[X|L3]</strong></em> to the left side:
+<pre>
+append([],L,L).
+append([X|L1],L2,[X|L3]) :- append(L1,L2,L3).
+</pre>
+This says first that the anything appended on the empty list is that
+thing itself.  Otherwise, to append some nonempty list having first
+item <strong>X</strong></em> to a second list <strong>L2</strong></em>, append the
+<em>rest</strong></em>
+of that first list (without <strong>X</strong></em>) to <strong>L2</strong></em>, and then put <strong>X</strong></em> in front of that.
+Study this
+revised definition carefully; it's a good example of how the style of
+Prolog programming differs from the style of most other programming.
+
+<p>Figure 5-2 shows an example using <strong>append</strong></em> with the first two arguments
+bound (inputs) and the third argument unbound (an output), for the query
+<pre>
+?- append([gas,oil],[tires,battery,radiator],Things_to_check_before_trip).
+</pre>
+The nested boxes represent the rule invocation environments created
+with each recursion.  The outer one holds the parameter and local variables
+for the initial invocation of <strong>append</strong></em>.  This invocation recursively calls
+itself, creating the middle box, with its own
+distinct variables.  This invocation of <strong>append</strong></em> in turn recursively calls
+itself, resulting in the inner environment (box) with yet more distinct
+variables.  The processing state at this point is depicted in the Figure.  Now:
+<blockquote>
+1. The first line of <strong>append</strong></em> says to bind its third argument to its value
+of <strong>L</strong></em>, <strong>[tires,battery,radiator]</strong></em>, and the invocation of the inner box
+succeeds.
+
+<p>2. Returning next to the middle box, <strong>[tires,battery,radiator]</strong></em>
+is the value of <strong>L3</strong></em>, and its <strong>X</strong></em> is <strong>oil</strong></em>, so <strong>[X|L3]</strong></em>
+is <strong>[oil,tires,battery,radiator]</strong></em>.  So the invocation of the middle box succeeds.
+
+<p>3. Returning to the outer box, <strong>[oil,tires,battery,radiator]</strong></em> is the
+value of <em>its</strong></em> <strong>L3</strong></em>,
+so its <strong>[X|L3]</strong></em> is <strong>[gas,oil,tires,battery,radiator]</strong></em>.
+The outer box succeeds.
+
+<p>4. So the original third argument <strong>Things_to_check_before_trip</strong></em> is
+bound to <strong>[gas,oil,tires,battery,radiator]</strong></em>.
+</blockquote>
+
+<p>Like the <strong>member</strong></em> predicate and many other predicates defined without
+arithmetic, <strong>append</strong></em> will work several ways.  In fact, it will work seven
+ways (see Figure 5-3).  For instance, it will handle the case in which
+the third argument is bound (an input) but the first and second arguments
+are unbound (outputs).  Then the first two arguments are bound to
+binary partitions (breakings-in-half) of the third argument.  So
+<pre>
+?- append(L1,L2,[tom,dick,harry]).
+</pre>
+gives the following if you keep typing a semicolon:
+<pre>
+L1=[], L2=[tom,dick,harry];
+L1=[tom], L2=[dick,harry];
+L1=[tom,dick], L2=[harry];
+L1=[tom,dick,harry], L2=[];
+no.
+</pre>
+The other rows in Figure 5-3 show other ways <strong>append</strong></em> can be
+used.  Basically, we've got seven quite different programs in one.  This
+comes about from the declarative interpretation of the definition:
+it describes conditions that hold when its third argument is the result of
+appending the first two arguments, not how to do it.  Again, it describes
+"what" instead of "how".
+
+<p>
+<h3>
+Combining list predicates
+</h3>
+
+<p>List predicate definitions can refer to other list predicates.  For instance,
+we can use <strong>member</strong></em> to define a <strong>subset</strong></em> predicate that determines whether
+all the members of some list <strong>L1</strong></em> are members of some
+list <strong>L2</strong></em>.  Here it is, and we print <strong>member</strong></em> as well to refresh your memory.
+<pre>
+subset([],L).
+subset([X|L1],L2] :- member(X,L2), subset(L1,L2).
+
+<p>member(X,[X|L]).
+member(X,[Y|L]) :- member(X,L).
+</pre>
+We leave a blank line between the rule groups with the same predicate
+name, following a convention (also followed in the traffic lights
+program of Section 4.11).  Here's an example use of the program:
+<pre>
+?- subset([b,c],[a,c,e,d,b]).
+yes
+</pre>
+
+<p>Here's a program for sorting lists of numbers into increasing
+order, <em>insertion sort</strong></em> in particular:
+<pre>
+sort([],[]).
+sort([X|L1],L2) :- sort(L1,L3), insert_item(X,L3,L2).
+
+<p>insert_item(X,[],[X]).
+insert_item(X,[Y|L],[X,Y|L]) :- X &lt; Y.
+insert_item(X,[Y|L1],[Y|L2]) :- X &gt;= Y, insert_item(X,L1,L2).
+</pre>
+The first argument to <strong>sort</strong></em> is an unsorted input list, and the
+second argument is the output sorted list.  The first argument to <strong>insert_item</strong></em>
+is an input item, the second argument an input list, and the third argument
+is the result of inserting that item into that list, an output.  For instance:
+<pre>
+?- sort([3,2,7,4],L).
+L=[2,3,4,7]
+</pre>
+
+<p>
+<h3>
+Redundancy in definitions
+</h3>
+
+<p>Basis conditions in a recursive definition are simple cases
+that don't require recursion.  We always need at least one basis condition
+in a recursion, but we can have more than one.
+For instance, we could define length of a list this way:
+<pre>
+length([],0).
+length([X],1).
+length([X,Y],2).
+length([X,Y,Z|L],N) :- length(L,N2), N is N2 + 3.
+</pre>
+instead of equivalently:
+<pre>
+length([],0).
+length([X|L],N) :- length(L,N2), N is N2+1.
+</pre>
+But the extra lines can speed calculation when our lists are
+very short on the average: we're able to answer many queries without
+recursion.  Here's a similar alternative to the <strong>member</strong></em> definition
+of Section 5.5:
+<pre>
+member(X,[X|L]).
+member(X,[Y,X|L]).
+member(X,[Z,Y|L]) :- member(X,L).
+</pre>
+Here the second line is redundant, since its case can be covered by a slightly
+modified third line.  But if lists are often, or
+the things we're looking for are usually towards the front of the lists,
+the preceding definition may be faster than the original definition.
+
+<p>Such modifications are a kind of <em>caching</strong></em>, a concept that occurs in many
+disguises in artificial intelligence, and which will reappear in a quite
+different form in Chapter 6.  Caching means asserting
+unnecessary or redundant facts to improve efficiency.
+The idea is to waste a little space (the extra facts) in the hope of
+improving calculation speed.  Caching doesn't always improve speed
+significantly, so to justify it you first need to do experiments, or do
+some mathematical analysis like that we'll do in Section 9.14 and 13.3.
+
+<p>
+<h3>
+An example: dejargonizing bureaucratese (*)
+</h3>
+
+<p>Natural language (human language) is a major subarea of
+artificial intelligence research.  Lists and list processing routines are
+the obvious way to represent and use sentences and languages in Prolog.
+As an example, consider a critical technical problem facing the United
+States today: the translation of bureaucratic jargon into real
+English.  Bureaucratic organizations typically use their own terminology
+to make their accomplishments look a little less pathetic than they really
+are.  It would be useful to take a sentence of such bureaucratic jargon,
+expressed as a Prolog list, and convert it to understandable everyday
+English.  Such a translation program might be used routinely on
+government documents.
+
+<p>For instance, "impact" is often misused as a verb, as in "The study will
+impact the department."  When so used, it can be replaced by the simpler
+and more standard English word "affect".  Similarly, "adversely impact" and
+"negatively impact" can be replaced by "hurt".  "Transition"
+is also misused as a verb, as in "The project will transition to phase 3,"
+and can be replaced by "change".  "Evaluate options" and "consider options"
+can be changed to "study", and "under advisement" and "under consideration"
+to "being studied".  You can probably recall many more examples.
+These substitutions usually but not always have the same meanings, so the
+sentence created by applying them should always be carefully double-checked.
+
+<p>It's easy to write a Prolog program for this, once English
+sentences are represented in Prolog list format.  First we represent
+the substitution pairs as facts.  For example:
+<pre>
+substitution([adversely,impact],[hurt]).
+substitution([negatively,impact],[hurt]).
+substitution([impact],[affect]),
+substitution([will,transition],[will,change]).
+substitution([must,transition],[must,change]).
+substitution([to,transition],[to,change]).
+substitution([consider,options],[study]).
+substitution([evaluate,options],[study]).
+substitution([under,advisement],[being,studied].
+substitution([under,consideration],[being,studied].
+substitution([expedite],[do]).
+substitution([expeditiously],[fast]).
+substitution([will,secure],[will,close]).
+substitution([must,secure],[must,close]).
+substitution([prioritize],[rank]).
+</pre>
+The first argument contains the original words, and the second argument the
+words to be substituted.  Note that extra words in the first argument narrow
+the applicability of the substitution, but reduce the possibility of
+making mistakes.
+
+<p>Next we define a predicate that recurses through the sentence list,
+like <strong>member</strong></em> and <strong>delete</strong></em> defined in Sections
+5.5 and 5.6 respectively:
+<pre>
+dejargonize([],[]).
+dejargonize(L,NL) :- substitution(S,NS), append(S,L2,L),
+  append(NS,L2,L3), dejargonize(L3,NL).
+dejargonize([X|L],[X|L2]) :- dejargonize(L,L2).
+</pre>
+The first line sets the basis condition as the empty list, and the last
+line recurses through the list.  The middle two lines do the work of
+substitution.  They check through the substitution facts for one whose
+first argument matches the front of the list (using the <strong>append</strong></em>
+predicate according to the third line of Figure 5-3, for second argument
+unbound), and substitute (using <strong>append</strong></em> according to the
+second line of Figure 5-3, for the third argument unbound), and
+recurse on the new list.  Here's an example:
+<pre>
+?- dejargonize
+([we,must,consider,options,to,transition,expeditiously],L).
+L=[we,must,study,to,change,fast]
+</pre>
+
+<p>Despite the somewhat frivolous nature of this program, the idea
+of substituting into strings of words is important in much natural language
+work, and we'll look some more into it at the end of the next chapter.
+
+<p>
+<h2>
+Keywords:
+</h2>
+
+<p>
+<pre>
+<em>infix
+arithmetic assignment
+<strong>is<em>
+prefix
+multiway reasoning
+recursion
+tail recursion
+basis of a recursion
+induction step of a recursion
+lists
+Lisp
+linked-pointer list representation
+the bar symbol
+the <strong>member<em> predicate
+the <strong>delete<em> predicate
+the <strong>append<em> predicate
+caching</strong></em>
+</pre>
+
+<p>
+<h2>
+Exercises
+</h2>
+
+<p>5-1. (A,P)   Define a Prolog predicate <strong>max(X,Y,Z,M)</strong></em> that says
+that <strong>M</strong></em> is the maximum of the three
+input numbers <strong>X</strong></em>, <strong>Y</strong></em>, and <strong>Z</strong></em>.
+Use only "<strong>&gt;</strong></em>" to compare numbers.
+
+<p>5-2. (R,A)  A student familiar with Pascal was writing a compiler in Prolog.
+This required translating an error code number into an
+English description, so they wrote rules like this:
+<pre>
+translate(Code,Meaning) :- Code=1, Meaning is integer_overflow.
+translate(Code,Meaning) :- Code=2, Meaning is division_by_zero.
+translate(Code,Meaning) :- Code=3, Meaning is unknown_identifier.
+</pre>
+This is poor Prolog programming style.  How can it be improved?
+
+<p>5-3. (P) Write a <strong>better_divide</strong></em> like <strong>better_add</strong></em> that handles similar
+cases for division.  Have the program prevent division by zero.
+
+<p>5-4. To figure out a tax amount, you subtract the deductions from the gross
+and multiply by the tax rate (expressed as a decimal number less than 1).
+Using the <strong>better_add</strong></em> predicate defined in Section 5.3 and an analogous
+predicate <strong>better_multiply</strong></em> that you define yourself, write a single Prolog
+rule that can be used to answer all the following questions by a single
+query each:
+<blockquote>
+--If my gross is 1,000, my deductions 270, and my tax rate 0.15, what is my tax?
+
+<p>--If my tax was 170 at a tax rate of 0.17, with no deductions, what was my
+gross?
+
+<p>--If my tax was 170 at a tax rate 0.17 and a gross of 1500, what amount
+of deductions did I take?
+
+<p>--What tax rate would result in a tax of 80 on a gross of 1200 with 400 in deductions?
+</blockquote>
+If your Prolog dialect can handle decimal numbers, show
+your program works correctly for the preceding questions.
+
+<p>5-5. (P) (This requires a Prolog dialect with floating-point numbers.)
+Define a predicate
+<strong>square(X,Y)</strong></em> that says that its second argument is the square of its
+first argument (the result of multiplying the first argument by itself).
+Using the built-in <strong>var</strong></em> predicate, have it handle each of the four
+cases of binding of its arguments:
+<blockquote>
+--if both arguments are bound, it checks that the second argument is
+the square of the first;
+
+<p>--if the first argument is bound and the second argument unbound, it computes
+the square of the first argument;
+
+<p>--if the first argument is unbound and the second argument is bound, it computes
+an approximation of the first argument within 0.001 by bisection search or
+some other iterative method from numerical analysis;
+
+<p>--if both arguments are unbound, it generates all possible pairs of positive
+integers and their squares starting with 1.
+</blockquote>
+
+<p>5-6. (P) (a) Define a new predicate <strong>integer_better_add</strong></em>, like <strong>better_add</strong></em>
+but able to handle the case in which its first two arguments are unbound
+(outputs), finding all pairs of integers that sum to a bound (input)
+integer third argument.
+
+<p>(b) Use part (a) to write a program to generate three-by-three magic squares
+that have a given number as characteristic sum.  (A <em>magic square</strong></em> is a
+two-dimensional array of integers such that the sum of eight things--the
+three columns, the three rows, and the two diagonals--is the same.)
+
+<p>5-7. Consider this query:
+<pre>
+a(X,Y), not(c(X)), d(X,Y).
+</pre>
+Suppose our Prolog database contains this, in order:
+<pre>
+d(X,Y) :- X &gt; 1, Y &gt; 1.
+
+<p>a(0,1).
+a(0,2).
+a(2,1).
+a(M,N) :- b(P,Q), b(Q,P), M is P + 1, N is Q + 1.
+
+<p>c(0).
+
+<p>b(3,1).
+b(2,1).
+b(1,2).
+</pre>
+
+<p>(a) Without using the computer, what is the first answer found to the query
+by a Prolog interpreter?
+
+<p>(b) Without using the computer, what is the second answer found to the
+query (when you type a semicolon after the first answer)?
+
+<p>5-8. (R,A)  Suppose we have Prolog facts about named
+events in terms of the following three predicates:
+<blockquote>
+<strong>start(&lt;event&gt;,&lt;time&gt;)</strong></em>, an event started at a particular time
+<br>
+<strong>end(&lt;event&gt;,&lt;time&gt;)</strong></em>, an event ended at a particular time
+<br>
+<strong>duration(&lt;event&gt;,&lt;length&gt;)</strong></em>, an event lasted for a particular length of time
+</blockquote>
+We may have one, two, or all three of these facts about some event, and we
+can't know in advance which we will have if we have one or two.
+
+<p>(a) Write Prolog rules to infer an end time for some event when
+there is no <strong>end(Event,Time)</strong></em> fact for it, and to infer a start
+time when there is no <strong>start(Event,Time)</strong></em> fact for it.
+
+<p>(b) Define a new Prolog predicate <strong>after(Event1,Event2)</strong></em> which is true
+when its first argument <strong>Event1</strong></em> definitely happened after
+its second argument <strong>Event2</strong></em>.
+
+<p>(c) Define a new Prolog predicate <strong>during(Event1,Event2)</strong></em> which is true
+when its first argument <strong>Event1</strong></em> definitely happened while
+its second argument <strong>Event2</strong></em> was happening.
+
+<p>(d) Explain where in a Prolog database of facts these rules
+should go for things to work right.
+
+<p>5-9. (R,A) The transmission of a car contains gears that transmit power
+to the car's wheels.  You can infer the speed and direction of the wheels,
+given facts about what gears are connected to what other gears and what
+is driving them.
+
+<p>Assume gears are labeled <strong>g1</strong></em>, <strong>g2</strong></em>, <strong>g3</strong></em>, and so on.  Assume the number of
+teeth on each gear is specified by facts of the form
+<pre>
+teeth(&lt;gear_name&gt;,&lt;number_of_teeth&gt;).
+</pre>
+Assume all rigid connections between gears on the same rigid shaft are
+specified by facts of the form
+<pre>
+same_shaft(&lt;gear_name_1&gt;,&lt;gear_name_2&gt;).
+</pre>
+Assume that all meshed (teeth-to-teeth)
+connections between gears are specified by facts of the form
+<pre>
+meshed(&lt;gear_name_1&gt;,&lt;gear_name_2&gt;).
+</pre>
+
+<p>(a) We want to reason about the rotational speed and direction of gears.
+Give a good format for such facts for each gear.
+
+<p>(b) Anytime two gears are rigidly attached to the same rigid shaft,
+their rotational speeds are the same.  Write a Prolog rule that can infer
+the rotational speed of one such gear on a shaft from the known rotational
+speed of another such gear.   Use the fact format from part (a).
+
+<p>(c) Anytime two gears are connected or "meshed" the product of the number of
+teeth and the rotational speed for each gear is the same, except that one
+gear rotates in the opposite direction from the other.  Write a Prolog
+rule that can infer the rotational speed of a gear from the rotational speed
+of a gear meshed with it, assuming the number of teeth on both gears is
+known.  Use the fact format from part (a).
+
+<p>(d) Suppose gear g1 has a rotational speed of 5000 rpm in a clockwise
+direction.  Suppose it is on the same shaft as g2, g2 is meshed to g3,
+and g2 is meshed to g4.  Suppose g1 has 100 teeth, g2 has 30 teeth, g3 has
+60 teeth, and g4 has 90 teeth.  Give a Prolog query that will figure out
+the rotational speed and direction
+of gear g4 from a database of these facts.  Then show the steps that
+the Prolog interpreter will take to answer that query.  Note: you must write
+the facts with the correct order of arguments in order for your inference
+rules to apply properly to them.
+
+<p>(e) Explain how infinite loops could happen when reasoning about gears,
+if you weren't careful in specifying the facts.
+
+<p>(f) Suppose for some arrangement of gears and specified gear speeds you
+find gear g8 has a speed of 1200 rpm by one chain of reasoning, and
+800 rpm by another chain of reasoning.  What does this mean for the gears?
+
+<p>5-10. (P) Define a predicate <strong>convert</strong></em> that does units conversion for length
+measurement; for instance, it converts a measurement in feet
+to meters.  The <strong>convert</strong></em> predicate should take
+four arguments: a number (an input), the units for that number (an input),
+the units to which you want to convert (an input), and the result number (an
+output).  Handle the following units:
+meters, decimeters, centimeters, millimeters, decameters, kilometers,
+inches, feet, yards, and miles.  Hint: don't write a separate rule for
+every pair of possible units, but chain inferences.
+
+<p>5-11. Consider representing maps of highway routes in
+Prolog.  Suppose you don't have much memory space, so representing squares of
+the map as a two-dimensional array is out of the question.  Instead,
+you want to store just information about what towns are connected
+by which highways segments (assume segments have names and numbers, not
+unique, like "California 62"), and distances.  Suppose highway segments are
+in different counties, states, and countries, and we want to remember
+which.  Suppose we also store the different maximum speed limits for
+different states and countries.  Assume each route is in a single county
+(you can create imaginary towns on county lines to ensure this).
+Assume highway segments meet only at towns.
+
+<p>(a) Give formats for the fact predicates you need.
+
+<p>(b) Give a rule or rules for inferring the maximum speed limit on a road.
+
+<p>(c) Give a rule or rules for inferring a distance (not necessarily
+the shortest, that's hard) between two towns.  Don't worry
+about getting into a infinite loop; assume the Prolog interpreter is
+smart enough not to visit the same town twice in a route (we'll explain how
+to do this in Chapter 10).
+
+<p>(d) Suppose there are R routes (connecting two towns each), C counties,
+S states, and K countries.  How many facts do you save with the inference
+in part (b)?   Make reasonable assumptions if necessary.
+
+<p>(e) Suppose there are R routes (connecting two towns each)
+and T towns.  Approximately how many facts do you save with the
+inference in part (c)?  Perhaps consider different arrangements of towns.
+Make reasonable assumptions if necessary.
+
+<p>5-12. (P) Define a completely multidirectional <strong>inference_distance</strong></em> of three
+arguments.  Its first argument is a kind of the second argument.  Its third
+argument is the number of linking <strong>a_kind_of</strong></em> facts that must be
+followed to get from the first argument to the second.  By "completely
+multidirectional" we mean able to handle any pattern of bindings of the
+arguments.  Assume there are only <strong>a_kind_of</strong></em> facts, no rules, and the
+facts don't have any cycles, and there is only one route between any two
+things.  (The inference distance concept is important in
+psychology, because some psychologists believe that humans have semantic
+networks in their heads and that the speed of human reasoning is
+proportional to the inference distance.)
+
+<p>5-13. (E) Consider a Prolog definition written to implement a function, in
+other words written to be used when all arguments but the last are bound
+(inputs), which binds its last argument to some unique value.
+In abstract mathematical terms, what characteristics must the function have
+to be easily used multidirectionally, that is with last argument bound
+and other arguments unbound?
+
+<p>5-14. (A,P) (a) Using a single call to <strong>append</strong></em> and no other predicates,
+implement the <strong>member</strong></em> predicate.  (Hint: the fifth row of Figure 5-3 is
+closest to what you need.)
+
+<p>(b) Using a single call to <strong>append</strong></em> and no other predicates,
+implement the <strong>last</strong></em> predicate.
+
+<p>(c) Using just two calls to <strong>append</strong></em> and no other predicates, implement a
+<strong>deleteone</strong></em> predicate that removes a single occurrence of some item
+from a list.
+
+<p>(d) Using just two calls to <strong>append</strong></em> and no other predicates, implement a
+<strong>before</strong></em> predicate of three arguments, that succeeds if its first two
+arguments are both members of its list third argument, and where the
+first argument item occurs before the second argument item.
+
+<p>5-15. (E) Figure 5-3 is missing a row for the case in which all variables are
+unbound.  Explain why for this case
+the predicate definition will not work properly.
+
+<p>5-16. Consider the <strong>delete</strong></em> predicate defined in the chapter:
+<pre>
+delete(X,[],[]).
+delete(X,[X|L],M) :- delete(X,L,M).
+delete(X,[Y|L],[Y|M]) :- not(X=Y), delete(X,L,M).
+</pre>
+
+<p>(a) Suppose you rewrite it as
+<pre>
+delete(X,[],[]).
+delete(X,[X|L],M) :- delete(X,L,M).
+delete(X,[Y|L],[Y|M]) :- delete(X,L,M).
+</pre>
+What happens when you query this predicate with second and third
+arguments bound and first argument unbound?
+
+<p>(b) What happens if you change the second line to
+<pre>
+delete(X,[X|L],L).
+</pre>
+and query this predicate with first and second arguments bound and third
+argument unbound?
+
+<p>5-17. (A) (a) Suppose that Prolog predicate <strong>mystery</strong></em> is queried with
+its first argument a bound (input) list and its
+second argument unbound (an output).
+Describe what the predicate <strong>mystery</strong></em> does, in a sentence of 20 or less
+English words.  (Hint: try it on sample lists.)
+<pre>
+mystery([],[]).
+mystery([X],[X]).
+mystery([X,Y|L],[X,censored|M]) :- mystery(L,M).
+</pre>
+
+<p>(b) Most recursive list-processing definitions have only one basis
+condition.  Why does the preceding definition need two?
+
+<p>5-18. In the language Logo and other languages with <em>turtle geometry</strong></em>
+primitives, there are special commands to control a plotting
+pen.  The pen has a position (measured in millimeters in a coordinate
+system) and a direction
+it is pointing in the plane of the paper (measured in degrees).
+Two built-in predicates manipulate the pen: <strong>forward(X)</strong></em>
+which moves the pen forward a distance <strong>X</strong></em> in the direction it is
+pointing, and <strong>right(X)</strong></em>, which turns the pen around <strong>X</strong></em> degrees (without
+moving its location) so it points in a new direction.  This program
+draws spirals, increasing the length it moves forward each step:
+<pre>
+spiral(Side,Angle,Increment) :- forward(Side), right(Angle),
+  Side2 is Side + Increment, spiral(Side2,Angle,Increment).
+</pre>
+
+<p>(a) Draw what the query
+<pre>
+?- unknown(4).
+</pre>
+causes to be drawn.  Assume the pen is pointing north at the start.
+Indicate the lengths of lines in your drawing.  Here is the definition:
+<pre>
+unknown(1) :- right(90).
+unknown(N) :- Nm1 is N-1, unknown(Nm1), N2 is 5-N,
+  forward(N2), unknown(Nm1).
+</pre>
+
+<p>(b) Draw what the query
+<pre>
+?- flake(3).
+</pre>
+causes to be drawn.  Again assume the pen is pointing north at
+the start.  Here is the definition:
+<pre>
+flake(1) :- forward(1).
+flake(N) :- Nm1 is N-1, flake(Nm1), right(-60), flake(Nm1),
+  right(120), flake(Nm1), right(-60), flake(Nm1).
+</pre>
+Hint: this one is too complicated to figure out procedurally--reason about
+the declarative meaning of the rules.
+
+<p>5-19. (A) Consider use of the <strong>member</strong></em> predicate with both arguments bound,
+and with the second (list) argument N items long.
+
+<p>(a) How many times is the rule invoked when the answer to the query
+is <strong>no</strong></em>?
+
+<p>(b) Suppose the answer to the query is <strong>yes</strong></em> and suppose the item being
+searched for is equally likely to appear at any position in the list.
+How many times on the average will the rule be invoked now?
+
+<p>5-20. Consider our "dejargonizing" program.  Each substitution of one set
+of words for another takes one line to define.  Explain how to compress
+this set of substitutions so one line can handle many substitutions.
+(Hint: variables can be items in lists.)
+
+<p>5-21. (E) What is wrong with the following "proof" that all horses are the
+same color?  "One horse is obviously the same color as itself.
+Suppose for some N, every set of N horses is the same color. Then
+consider some horse Snowy, a white horse, for purposes of argument.
+Consider the set of N+1 items formed by including Snowy in an
+arbitrary set of N horses.  Now if we take out some other horse
+than Snowy from this set (call him Blacky), we have a set of N
+horses.  By the induction assumption, these horses are all the
+same color.  But Snowy is white.  Therefore all the other horses
+in the original set must have been white.  So put Blacky back in
+and take out some other horse (besides Snowy, call him Alabaster)
+to create a new set of N horses.  This new set must also be all
+of the same color, so since it includes Snowy, the color must be
+white.  But Blacky is in the set too, and so must be white too.
+Hence every set of N+1 horses must be white.  Hence if any set of
+N horses is all the same color, any set of N+1 horses is of the
+same color.  Hence by recursive argument, all horses are the same color."
+
+<p>5-22. (A,P) Write a modified transitivity rule (for let's say transitivity
+of <strong>a(X,Y))</strong></em>
+that can't ever get into infinite loops when answering a query of the form
+<pre>
+?- a(r,s).
+</pre>
+Show your program working on some sample data that contains cycles with
+respect to the <strong>a</strong></em> predicate.  (A "cycle" means a closed
+loop in the semantic network.)  Hint: use an extra list argument.
+
+<p>5-23. (P) Create a Prolog database and query it appropriately to
+create poems of the following form:
+<blockquote>
+A A B
+C C B
+D D
+D D
+E E B
+</blockquote>
+Here each capital letter stands for a class of nonsense words that must
+rhyme together.  B represents one-syllable words, and the other letters
+represent two-syllable words.  In addition, the poem cannot have
+duplicate words.  Here is an example poem:
+<blockquote>
+uga buga ru
+batta hatta nu
+fitty pitty
+witty ditty
+garra farra tu
+</blockquote>
+It will help to define a predicate <strong>different</strong></em> of two arguments that says
+whether two words are identical.  Present your resulting poem as the value
+of a single variable, a list of lists for which each list is
+a line of the poem.  Type semicolons to see what similar poems you get.
+
+<p>
+<p><A HREF="book.html">Go to book index</A>
+</body>
+</html>
