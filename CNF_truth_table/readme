@@ -1,0 +1,16 @@
+pre_processing.py takes cnf clauses as input and converts it into a numerical form which is then taken as input by cnf.c to form the truth table. 
+
+Input format :
+
+No. of variables
+No. of cnf clauses
+Clause 1
+Clause 2
+...
+...
+
+you can check the sample input file.
+
+To run the code, issue the following commands in terminal : 
+gcc cnf.c
+python pre_processing.py < input_file_name | ./a.out
