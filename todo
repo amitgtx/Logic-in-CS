@@ -1,0 +1,39 @@
+1. Make rules for capturing the sequence in which balls are between storage and platform.
+
+n balls
+
+-S1 (contains x balls) , P (contains 2 balls) , S2 (n-x-2 balls)
+
+WL=[]
+BL=[]
+
+S1=[b,...i]
+S2=[]
+P=[a]
+
+W2(p,q)
+B2(p,q)
+MS(p,q)  // not B2(p,q) or
+
+//Making the relation undirected - White2Symmentric
+W2S(X,Y) :- W2(X,Y) or W2(Y,X)
+B2S(X,Y) :- B2(X,Y) or B2(Y,X)
+M2S(X,Y) :- M2(X,Y) or M2(Y,X)
+
+//Making New White2 and New Black2 - Capturing all the transitivity relations 
+NW2(X,Y) :- W2S(X,Y) or ((W2S(X,Z) and W2S(K,Y))
+NB2(X,Y) :- B2S(X,Y) or ((B2S(X,Z) and B2S(K,Y))
+
+
+W(a) :- NW2(a,_) or (M(a) and NB2(b,c))
+B(a) :- NB2(a,_) or (M(a) and NW2(b,c))
+M(a) :- not NB2(a,_) and not NW2(a,_)
+
+1. If W(a) , then 
+	Compare a with X (X != a), on every NW2(a,X) , append X to WL
+	
+	WL [ ] 
+2. If B(a) , then 
+	Compare a with X (X != a), on every NB2(a,X) , append X to BL
+
+//self(A,B) :- A=B
